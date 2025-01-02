@@ -3,10 +3,10 @@ import { CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function HomePage() {
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
 
   const handleGetStarted = () => {
-    navigate("/payment");
+    setLocation("/payment");
   };
 
   return (
@@ -32,14 +32,14 @@ export default function HomePage() {
           <div className="container mx-auto flex justify-between items-center">
             <div 
               className="text-red-600 font-bold text-4xl cursor-pointer" 
-              onClick={() => navigate("/")}
+              onClick={() => setLocation("/")}
             >
               DUBCRIBUTIONS
             </div>
             <Button 
               variant="outline"
               className="text-white border-white hover:bg-white/20"
-              onClick={() => navigate("/login")}
+              onClick={() => setLocation("/login")}
             >
               Sign In
             </Button>
