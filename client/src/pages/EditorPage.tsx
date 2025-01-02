@@ -21,6 +21,7 @@ export default function EditorPage() {
 
     if (isMobile) {
       setShowSidebar(false);
+      setShowAI(false);
     }
   }, [isMobile]);
 
@@ -31,6 +32,7 @@ export default function EditorPage() {
           variant="ghost"
           size="icon"
           onClick={() => setShowSidebar(!showSidebar)}
+          aria-label={showSidebar ? "Hide sidebar" : "Show sidebar"}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -64,7 +66,7 @@ export default function EditorPage() {
           {showAI && (
             <>
               <ResizableHandle />
-              <ResizablePanel defaultSize={30}>
+              <ResizablePanel defaultSize={30} minSize={25}>
                 <AIAssistant file={selectedFile} />
               </ResizablePanel>
             </>
