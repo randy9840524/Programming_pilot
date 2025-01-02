@@ -5,8 +5,8 @@ import { db } from "@db";
 import { sql } from "drizzle-orm";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 // Setup logging middleware
 app.use((req, res, next) => {
@@ -51,7 +51,7 @@ app.use((req, res, next) => {
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
-      console.error(err);
+      console.error('Error:', err);
       res.status(status).json({ message });
     });
 
@@ -61,23 +61,11 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    // Try using port 5000 first, fallback to others if needed
+    // Try using port 5000 first
     const PORT = 5000;
 
     server.listen(PORT, "0.0.0.0", () => {
       log(`Devsol 1.0 Server running on port ${PORT}`);
-    }).on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        // Try next available port
-        const nextPort = PORT + 1;
-        log(`Port ${PORT} is in use, trying port ${nextPort}`);
-        server.listen(nextPort, "0.0.0.0", () => {
-          log(`Devsol 1.0 Server running on port ${nextPort}`);
-        });
-      } else {
-        console.error('Failed to start server:', err);
-        process.exit(1);
-      }
     });
   } catch (error) {
     console.error("Failed to start Devsol 1.0 server:", error);

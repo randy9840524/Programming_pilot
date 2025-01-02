@@ -5,7 +5,12 @@ export async function analyzeCode(
   try {
     // Get file content
     const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`);
-    const code = await fileResponse.text();
+    if (!fileResponse.ok) {
+      throw new Error(`Failed to load file: ${await fileResponse.text()}`);
+    }
+
+    const fileData = await fileResponse.json();
+    const code = fileData.content;
 
     // Send for analysis
     const analysisResponse = await fetch('/api/analyze', {
@@ -17,13 +22,18 @@ export async function analyzeCode(
     });
 
     if (!analysisResponse.ok) {
-      throw new Error(`Analysis failed: ${analysisResponse.statusText}`);
+      const errorData = await analysisResponse.json();
+      throw new Error(errorData.message || `Analysis failed: ${analysisResponse.statusText}`);
     }
 
     const data = await analysisResponse.json();
-    return data.response || "No response from AI";
-  } catch (error) {
+    if (!data.response) {
+      throw new Error("No response from AI");
+    }
+
+    return data.response;
+  } catch (error: any) {
     console.error("AI analysis failed:", error);
-    throw error;
+    throw new Error(error.message || "Failed to analyze code");
   }
 }

@@ -212,6 +212,20 @@ export function registerRoutes(app: Express): Server {
     try {
       const { code, prompt } = req.body;
 
+      if (!code || !prompt) {
+        return res.status(400).json({ 
+          error: "Missing required parameters", 
+          message: "Both code and prompt are required" 
+        });
+      }
+
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ 
+          error: "Configuration error", 
+          message: "OpenAI API key is not configured" 
+        });
+      }
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
@@ -224,12 +238,22 @@ export function registerRoutes(app: Express): Server {
             content: `Code:\n\n${code}\n\nQuestion: ${prompt}`,
           },
         ],
+        max_tokens: 2000,
+        temperature: 0.7,
       });
 
+      if (!completion.choices[0]?.message?.content) {
+        throw new Error("No response from OpenAI");
+      }
+
       res.json({ response: completion.choices[0].message.content });
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI analysis failed:", error);
-      res.status(500).send("Failed to analyze code");
+      const errorMessage = error.response?.data?.error?.message || error.message || "Failed to analyze code";
+      res.status(500).json({ 
+        error: "AI Analysis Error",
+        message: errorMessage
+      });
     }
   });
 
