@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { ChevronRight, CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function HomePage() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
 
   const handleGetStarted = () => {
-    setLocation("/payment");
+    navigate("/payment");
   };
 
   return (
@@ -32,14 +32,14 @@ export default function HomePage() {
           <div className="container mx-auto flex justify-between items-center">
             <div 
               className="text-red-600 font-bold text-4xl cursor-pointer" 
-              onClick={() => setLocation("/")}
+              onClick={() => navigate("/")}
             >
               DUBCRIBUTIONS
             </div>
             <Button 
               variant="outline"
               className="text-white border-white hover:bg-white/20"
-              onClick={() => setLocation("/login")}
+              onClick={() => navigate("/login")}
             >
               Sign In
             </Button>
