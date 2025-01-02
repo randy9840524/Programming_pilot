@@ -1,12 +1,12 @@
 import { Switch, Route } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
-import EditorPage from "./pages/EditorPage";
+import HomePage from "./pages/HomePage";
 
 function App() {
   return (
     <Switch>
-      <Route path="/" component={EditorPage} />
+      <Route path="/" component={HomePage} />
       <Route component={NotFound} />
     </Switch>
   );
