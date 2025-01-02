@@ -21,6 +21,7 @@ export function registerRoutes(app: Express): Server {
       const tree = buildFileTree(allFiles);
       res.json(tree);
     } catch (error) {
+      console.error("Failed to fetch files:", error);
       res.status(500).send("Failed to fetch files");
     }
   });
@@ -37,8 +38,9 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("File not found");
       }
 
-      res.send(file.content || "");
+      res.json(file);
     } catch (error) {
+      console.error("Failed to fetch file:", error);
       res.status(500).send("Failed to fetch file");
     }
   });
@@ -51,23 +53,26 @@ export function registerRoutes(app: Express): Server {
       const [existing] = await db
         .select()
         .from(files)
-        .where(
-          and(eq(files.path, fullPath), eq(files.name, name))
-        );
+        .where(and(eq(files.path, fullPath), eq(files.name, name)));
 
       if (existing) {
         return res.status(400).send("File already exists");
       }
 
-      await db.insert(files).values({
-        path: fullPath,
-        name,
-        type,
-        content: type === "file" ? "" : null,
-      });
+      const [file] = await db
+        .insert(files)
+        .values({
+          path: fullPath,
+          name,
+          type,
+          content: type === "file" ? "" : null,
+          metadata: { language: type === "file" ? getLanguageFromExt(name.split(".").pop() || "") : undefined },
+        })
+        .returning();
 
-      res.status(201).json({ message: "Created" });
+      res.status(201).json(file);
     } catch (error) {
+      console.error("Failed to create file:", error);
       res.status(500).send("Failed to create file");
     }
   });
@@ -77,13 +82,22 @@ export function registerRoutes(app: Express): Server {
       const filePath = decodeURIComponent(req.params.path);
       const { content } = req.body;
 
-      await db
+      const [file] = await db
         .update(files)
-        .set({ content, updatedAt: new Date() })
-        .where(eq(files.path, filePath));
+        .set({ 
+          content, 
+          updatedAt: new Date(),
+          metadata: {
+            lastModified: new Date().toISOString(),
+            size: content?.length || 0,
+          },
+        })
+        .where(eq(files.path, filePath))
+        .returning();
 
-      res.json({ message: "Updated" });
+      res.json(file);
     } catch (error) {
+      console.error("Failed to update file:", error);
       res.status(500).send("Failed to update file");
     }
   });
@@ -94,6 +108,7 @@ export function registerRoutes(app: Express): Server {
       await db.delete(files).where(eq(files.path, filePath));
       res.json({ message: "Deleted" });
     } catch (error) {
+      console.error("Failed to delete file:", error);
       res.status(500).send("Failed to delete file");
     }
   });
@@ -160,4 +175,22 @@ function buildFileTree(fileList: typeof files.$inferSelect[]): FileNode[] {
   });
 
   return root;
+}
+
+function getLanguageFromExt(ext: string): string {
+  const map: Record<string, string> = {
+    js: "javascript",
+    jsx: "javascript",
+    ts: "typescript",
+    tsx: "typescript",
+    py: "python",
+    java: "java",
+    cpp: "cpp",
+    c: "c",
+    html: "html",
+    css: "css",
+    json: "json",
+    md: "markdown",
+  };
+  return map[ext] || "plaintext";
 }

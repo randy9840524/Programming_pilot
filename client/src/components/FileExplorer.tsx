@@ -103,7 +103,7 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
           ) : (
             <div className="w-4" />
           )}
-          
+
           {node.type === "folder" ? (
             <Folder className="h-4 w-4" />
           ) : (
@@ -125,16 +125,14 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
 
           <div className="hidden group-hover:flex items-center gap-1">
             {node.type === "folder" && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => startNewItem(fullPath, "file")}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => startNewItem(fullPath, "file")}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
             )}
             <Button
               variant="ghost"
