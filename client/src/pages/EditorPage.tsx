@@ -16,6 +16,9 @@ export default function EditorPage() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   useEffect(() => {
+    // Update document title to reflect Devsol 1.0
+    document.title = "Devsol 1.0 - Modern Development Environment";
+
     if (isMobile) {
       setShowSidebar(false);
     }
@@ -31,6 +34,7 @@ export default function EditorPage() {
         >
           <Menu className="h-5 w-5" />
         </Button>
+        <span className="font-semibold text-lg mr-4">Devsol 1.0</span>
         <CommandPalette />
       </div>
 
