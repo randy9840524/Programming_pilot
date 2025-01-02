@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import * as monaco from "monaco-editor";
+import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -9,83 +9,17 @@ interface EditorProps {
   onAIToggle: () => void;
 }
 
-// Initialize Monaco Environment
-if (typeof window !== 'undefined') {
-  self.MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId: string, label: string) {
-      const basePath = '/monaco-editor/esm/vs';
-      if (label === 'typescript' || label === 'javascript') {
-        return `${basePath}/language/typescript/ts.worker.js`;
-      }
-      if (label === 'json') {
-        return `${basePath}/language/json/json.worker.js`;
-      }
-      if (label === 'css') {
-        return `${basePath}/language/css/css.worker.js`;
-      }
-      if (label === 'html') {
-        return `${basePath}/language/html/html.worker.js`;
-      }
-      return `${basePath}/editor/editor.worker.js`;
-    }
-  };
-}
-
-export default function Editor({ file, onAIToggle }: EditorProps) {
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
+  const editorRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    try {
-      // Initialize editor with improved configuration
-      editorRef.current = monaco.editor.create(containerRef.current, {
-        value: "",
-        language: "typescript",
-        theme: "vs-dark",
-        minimap: { enabled: true },
-        automaticLayout: true,
-        fontSize: 14,
-        lineNumbers: "on",
-        scrollBeyondLastLine: false,
-        roundedSelection: false,
-        padding: { top: 16 },
-        wordWrap: "on",
-        fixedOverflowWidgets: true,
-        scrollbar: {
-          verticalScrollbarSize: 12,
-          horizontalScrollbarSize: 12,
-        },
-        quickSuggestions: {
-          other: true,
-          comments: true,
-          strings: true,
-        },
-      });
-
-      // Listen for editor creation success
-      monaco.editor.onDidCreateEditor(() => {
-        console.log("Monaco editor initialized successfully");
-      });
-    } catch (error) {
-      console.error("Failed to initialize editor:", error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize code editor",
-        variant: "destructive",
-      });
-    }
-
-    return () => {
-      editorRef.current?.dispose();
-    };
-  }, [toast]);
+  function handleEditorDidMount(editor: any) {
+    editorRef.current = editor;
+  }
 
   useEffect(() => {
-    if (!file || !editorRef.current) return;
+    if (!file) return;
 
     setIsLoading(true);
     fetch(`/api/files/${encodeURIComponent(file)}`)
@@ -100,10 +34,7 @@ export default function Editor({ file, onAIToggle }: EditorProps) {
           editorRef.current.setValue(data.content || "");
           const ext = file.split(".").pop() || "";
           const language = getLanguageFromExt(ext);
-          monaco.editor.setModelLanguage(
-            editorRef.current.getModel()!,
-            language
-          );
+          editorRef.current.updateOptions({ language });
         }
       })
       .catch((error) => {
@@ -170,7 +101,23 @@ export default function Editor({ file, onAIToggle }: EditorProps) {
           <Brain className="h-5 w-5" />
         </Button>
       </div>
-      <div ref={containerRef} className="h-full w-full" />
+      <Editor
+        height="100%"
+        defaultLanguage="typescript"
+        theme="vs-dark"
+        loading={<div>Loading...</div>}
+        onMount={handleEditorDidMount}
+        options={{
+          minimap: { enabled: true },
+          fontSize: 14,
+          lineNumbers: "on",
+          scrollBeyondLastLine: false,
+          roundedSelection: false,
+          padding: { top: 16 },
+          wordWrap: "on",
+          automaticLayout: true,
+        }}
+      />
     </div>
   );
 }

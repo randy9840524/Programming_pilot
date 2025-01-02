@@ -61,9 +61,23 @@ app.use((req, res, next) => {
       serveStatic(app);
     }
 
-    const PORT = process.env.PORT || 5000;
+    // Try using port 5000 first, fallback to others if needed
+    const PORT = 5000;
+
     server.listen(PORT, "0.0.0.0", () => {
       log(`Devsol 1.0 Server running on port ${PORT}`);
+    }).on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        // Try next available port
+        const nextPort = PORT + 1;
+        log(`Port ${PORT} is in use, trying port ${nextPort}`);
+        server.listen(nextPort, "0.0.0.0", () => {
+          log(`Devsol 1.0 Server running on port ${nextPort}`);
+        });
+      } else {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+      }
     });
   } catch (error) {
     console.error("Failed to start Devsol 1.0 server:", error);
