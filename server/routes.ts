@@ -9,6 +9,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import { fileTypeFromBuffer } from "file-type";
+import { createWorker } from "tesseract.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +18,7 @@ const __dirname = path.dirname(__filename);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit for documents
   },
 });
 
@@ -33,11 +34,12 @@ export function registerRoutes(app: Express): Server {
   app.use('/monaco-editor', express.static(path.join(monacoDir, 'min')));
   app.use('/monaco-editor/esm', express.static(path.join(monacoDir, 'esm')));
 
-  // File upload endpoint
+  // File upload endpoint with OCR support
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {
       const file = req.file;
       const folderPath = req.body.path || "";
+      const processOCR = req.body.processOCR === "true";
 
       if (!file) {
         return res.status(400).send("No file uploaded");
@@ -61,6 +63,20 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("File already exists");
       }
 
+      let extractedText = "";
+      if (processOCR && file.mimetype === "application/pdf") {
+        try {
+          const worker = await createWorker();
+          await worker.loadLanguage('eng');
+          await worker.initialize('eng');
+          const { data: { text } } = await worker.recognize(file.buffer);
+          await worker.terminate();
+          extractedText = text;
+        } catch (error) {
+          console.error("OCR processing failed:", error);
+        }
+      }
+
       // Store file in database
       const [newFile] = await db
         .insert(files)
@@ -73,6 +89,7 @@ export function registerRoutes(app: Express): Server {
             mimeType: file.mimetype,
             size: file.size,
             lastModified: new Date().toISOString(),
+            extractedText: extractedText || undefined,
           },
         })
         .returning();

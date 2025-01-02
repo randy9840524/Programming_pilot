@@ -16,7 +16,6 @@ export default function EditorPage() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   useEffect(() => {
-    // Update document title to reflect Devsol 1.0
     document.title = "Devsol 1.0 - Modern Development Environment";
 
     if (isMobile) {
@@ -56,7 +55,7 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 50 : 80}>
+          <ResizablePanel defaultSize={showAI ? 40 : 80}>
             <Editor
               file={selectedFile}
               onAIToggle={() => setShowAI(!showAI)}
@@ -66,7 +65,7 @@ export default function EditorPage() {
           {showAI && (
             <>
               <ResizableHandle />
-              <ResizablePanel defaultSize={30} minSize={25}>
+              <ResizablePanel defaultSize={40} minSize={30}>
                 <AIAssistant file={selectedFile} />
               </ResizablePanel>
             </>
