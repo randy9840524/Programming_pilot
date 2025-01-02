@@ -9,22 +9,27 @@ interface EditorProps {
   onAIToggle: () => void;
 }
 
-// Setup Monaco environment
-self.MonacoEnvironment = {
-  getWorker: function (_moduleId: string, label: string) {
-    const getWorkerModule = (label: string) => {
-      switch (label) {
-        case 'typescript':
-        case 'javascript':
-          return new Worker(new URL('monaco-editor/esm/vs/language/typescript/ts.worker', import.meta.url));
-        default:
-          return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url));
+// Initialize Monaco Environment
+if (typeof window !== 'undefined') {
+  self.MonacoEnvironment = {
+    getWorkerUrl: function (_moduleId: string, label: string) {
+      const basePath = '/monaco-editor/esm/vs';
+      if (label === 'typescript' || label === 'javascript') {
+        return `${basePath}/language/typescript/ts.worker.js`;
       }
-    };
-
-    return getWorkerModule(label);
-  }
-};
+      if (label === 'json') {
+        return `${basePath}/language/json/json.worker.js`;
+      }
+      if (label === 'css') {
+        return `${basePath}/language/css/css.worker.js`;
+      }
+      if (label === 'html') {
+        return `${basePath}/language/html/html.worker.js`;
+      }
+      return `${basePath}/editor/editor.worker.js`;
+    }
+  };
+}
 
 export default function Editor({ file, onAIToggle }: EditorProps) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -35,24 +40,49 @@ export default function Editor({ file, onAIToggle }: EditorProps) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    editorRef.current = monaco.editor.create(containerRef.current, {
-      value: "",
-      language: "typescript",
-      theme: "vs-dark",
-      minimap: { enabled: true },
-      automaticLayout: true,
-      fontSize: 14,
-      lineNumbers: "on",
-      scrollBeyondLastLine: false,
-      roundedSelection: false,
-      padding: { top: 16 },
-      wordWrap: "on",
-    });
+    try {
+      // Initialize editor with improved configuration
+      editorRef.current = monaco.editor.create(containerRef.current, {
+        value: "",
+        language: "typescript",
+        theme: "vs-dark",
+        minimap: { enabled: true },
+        automaticLayout: true,
+        fontSize: 14,
+        lineNumbers: "on",
+        scrollBeyondLastLine: false,
+        roundedSelection: false,
+        padding: { top: 16 },
+        wordWrap: "on",
+        fixedOverflowWidgets: true,
+        scrollbar: {
+          verticalScrollbarSize: 12,
+          horizontalScrollbarSize: 12,
+        },
+        quickSuggestions: {
+          other: true,
+          comments: true,
+          strings: true,
+        },
+      });
+
+      // Listen for editor creation success
+      monaco.editor.onDidCreateEditor(() => {
+        console.log("Monaco editor initialized successfully");
+      });
+    } catch (error) {
+      console.error("Failed to initialize editor:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize code editor",
+        variant: "destructive",
+      });
+    }
 
     return () => {
       editorRef.current?.dispose();
     };
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (!file || !editorRef.current) return;
@@ -122,7 +152,7 @@ export default function Editor({ file, onAIToggle }: EditorProps) {
 
   return (
     <div className="h-full relative">
-      <div className="absolute top-2 right-2 flex gap-2">
+      <div className="absolute top-2 right-2 flex gap-2 z-10">
         <Button
           variant="secondary"
           size="sm"

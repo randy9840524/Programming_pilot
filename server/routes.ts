@@ -4,8 +4,13 @@ import { db } from "@db";
 import { files } from "@db/schema";
 import { eq, and } from "drizzle-orm";
 import OpenAI from "openai";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface FileNode {
   name: string;
@@ -14,6 +19,11 @@ interface FileNode {
 }
 
 export function registerRoutes(app: Express): Server {
+  // Serve Monaco Editor assets
+  const monacoDir = path.resolve(__dirname, '../node_modules/monaco-editor');
+  app.use('/monaco-editor', express.static(path.join(monacoDir, 'min')));
+  app.use('/monaco-editor/esm', express.static(path.join(monacoDir, 'esm')));
+
   // File operations
   app.get("/api/files", async (_req, res) => {
     try {
