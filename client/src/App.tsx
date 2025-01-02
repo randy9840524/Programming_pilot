@@ -2,16 +2,19 @@ import { Switch, Route } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import HomePage from "./pages/HomePage";
+import EditorPage from "./pages/EditorPage";
 
 function App() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/editor" component={EditorPage} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+// fallback 404 not found page
 function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-background">

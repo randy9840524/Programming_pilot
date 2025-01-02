@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { files } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { files, codeSnippets } from "@db/schema";
+import { eq, and, ilike, or } from "drizzle-orm";
 import OpenAI from "openai";
 import express from "express";
 import path from "path";
@@ -206,6 +206,74 @@ export function registerRoutes(app: Express): Server {
       res.status(500).send("Failed to delete file");
     }
   });
+
+  // Code Snippet Routes
+  app.get("/api/snippets", async (req, res) => {
+    try {
+      const searchQuery = req.query.q as string;
+      let query = db.select().from(codeSnippets);
+
+      if (searchQuery) {
+        query = query.where(
+          or(
+            ilike(codeSnippets.title, `%${searchQuery}%`),
+            ilike(codeSnippets.description, `%${searchQuery}%`)
+          )
+        );
+      }
+
+      const snippets = await query;
+      res.json(snippets);
+    } catch (error) {
+      console.error("Failed to fetch snippets:", error);
+      res.status(500).send("Failed to fetch snippets");
+    }
+  });
+
+  app.post("/api/snippets", async (req, res) => {
+    try {
+      const { title, description, code, language, tags } = req.body;
+
+      // Generate metadata using AI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "Analyze the following code snippet and provide metadata including framework used, complexity score (1-10), and estimated performance impact (1-10). Respond in JSON format.",
+          },
+          {
+            role: "user",
+            content: code,
+          },
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const aiMetadata = JSON.parse(completion.choices[0].message.content);
+
+      const [snippet] = await db
+        .insert(codeSnippets)
+        .values({
+          title,
+          description,
+          code,
+          language,
+          tags,
+          metadata: {
+            ...aiMetadata,
+            aiGenerated: false,
+          },
+        })
+        .returning();
+
+      res.status(201).json(snippet);
+    } catch (error) {
+      console.error("Failed to create snippet:", error);
+      res.status(500).send("Failed to create snippet");
+    }
+  });
+
 
   // AI Code Analysis
   app.post("/api/analyze", async (req, res) => {

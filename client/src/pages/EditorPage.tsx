@@ -7,11 +7,13 @@ import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
+import CodeSnippetLibrary from "@/components/CodeSnippetLibrary";
 import { useMobile } from "@/hooks/use-mobile";
 
 export default function EditorPage() {
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showAI, setShowAI] = useState(true); // Set to true by default
+  const [showAI, setShowAI] = useState(true);
+  const [showSnippets, setShowSnippets] = useState(false);
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
@@ -21,6 +23,7 @@ export default function EditorPage() {
     if (isMobile) {
       setShowSidebar(false);
       setShowAI(false);
+      setShowSnippets(false);
     }
   }, [isMobile]);
 
@@ -37,6 +40,22 @@ export default function EditorPage() {
         </Button>
         <span className="font-semibold text-lg mr-4">Devsol 1.0</span>
         <CommandPalette />
+        <div className="flex gap-2 ml-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSnippets(!showSnippets)}
+          >
+            {showSnippets ? "Hide Snippets" : "Show Snippets"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAI(!showAI)}
+          >
+            {showAI ? "Hide AI" : "Show AI"}
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -55,12 +74,21 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 40 : 80}>
+          <ResizablePanel>
             <Editor
               file={selectedFile}
               onAIToggle={() => setShowAI(!showAI)}
             />
           </ResizablePanel>
+
+          {showSnippets && (
+            <>
+              <ResizableHandle />
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <CodeSnippetLibrary />
+              </ResizablePanel>
+            </>
+          )}
 
           {showAI && (
             <>
