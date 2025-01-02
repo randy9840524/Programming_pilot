@@ -11,7 +11,7 @@ import { useMobile } from "@/hooks/use-mobile";
 
 export default function EditorPage() {
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showAI, setShowAI] = useState(false);
+  const [showAI, setShowAI] = useState(true); // Set to true by default
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 

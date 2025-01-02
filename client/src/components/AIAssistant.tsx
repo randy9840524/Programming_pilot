@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { analyzeCode } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
 
@@ -48,13 +48,15 @@ export default function AIAssistant({ file }: AIAssistantProps) {
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
-      <div className="border-b p-4">
-        <h2 className="font-semibold">AI Assistant</h2>
-        <p className="text-sm text-muted-foreground">Ask questions about your code</p>
+      <div className="border-b p-6">
+        <h2 className="text-2xl font-semibold mb-2">AI Assistant</h2>
+        <p className="text-muted-foreground">
+          Ask questions about your code and get intelligent responses
+        </p>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-6">
           {messages.map((message, i) => (
             <div
               key={i}
@@ -63,26 +65,33 @@ export default function AIAssistant({ file }: AIAssistantProps) {
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
+                className={`max-w-[80%] rounded-lg p-4 ${
                   message.role === "assistant"
-                    ? "bg-secondary"
+                    ? "bg-secondary text-secondary-foreground"
                     : "bg-primary text-primary-foreground"
                 }`}
               >
-                {message.content}
+                <div className="whitespace-pre-wrap">{message.content}</div>
               </div>
             </div>
           ))}
           {messages.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm">
-              No messages yet. Start by asking a question about your code.
+            <div className="text-center text-muted-foreground">
+              <p className="text-lg mb-2">Welcome to AI Assistant!</p>
+              <p>Start by asking a question about your code.</p>
+              <p className="text-sm mt-2">Examples:</p>
+              <ul className="text-sm mt-1 space-y-1">
+                <li>"What does this code do?"</li>
+                <li>"How can I improve this function?"</li>
+                <li>"Is there a bug in this code?"</li>
+              </ul>
             </div>
           )}
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
-        <div className="flex gap-2">
+      <div className="border-t p-6">
+        <div className="flex gap-4">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -92,16 +101,21 @@ export default function AIAssistant({ file }: AIAssistantProps) {
                 sendMessage();
               }
             }}
-            placeholder="Ask about your code..."
-            className="min-h-[80px] resize-none"
+            placeholder="Ask a question about your code..."
+            className="min-h-[100px] resize-none text-base"
             disabled={isLoading}
           />
           <Button
-            className="self-end"
+            size="lg"
+            className="self-end px-6"
             onClick={sendMessage}
             disabled={isLoading || !input.trim()}
           >
-            <Send className="h-4 w-4" />
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">

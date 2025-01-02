@@ -5,9 +5,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Plus, Save, FileText, FolderPlus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
@@ -38,7 +39,7 @@ export default function CommandPalette() {
         onClick={() => setOpen(true)}
       >
         <Search className="mr-2 h-4 w-4" />
-        Search commands...
+        Type a command or search...
         <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
           <span className="text-xs">⌘</span>K
         </kbd>
@@ -57,21 +58,33 @@ export default function CommandPalette() {
         />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Actions">
+          <CommandGroup heading="File Operations">
             <CommandItem
               onSelect={() => runCommand(() => console.log("New File"))}
             >
+              <Plus className="mr-2 h-4 w-4" />
               New File
             </CommandItem>
             <CommandItem
               onSelect={() => runCommand(() => console.log("New Folder"))}
             >
+              <FolderPlus className="mr-2 h-4 w-4" />
               New Folder
             </CommandItem>
             <CommandItem
               onSelect={() => runCommand(() => console.log("Save"))}
             >
+              <Save className="mr-2 h-4 w-4" />
               Save
+            </CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Upload">
+            <CommandItem
+              onSelect={() => runCommand(() => console.log("Upload File"))}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload File
             </CommandItem>
           </CommandGroup>
         </CommandList>

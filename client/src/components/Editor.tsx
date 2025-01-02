@@ -3,6 +3,7 @@ import { Editor } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 import DocumentPreview from "./DocumentPreview";
 
 interface EditorProps {
@@ -128,14 +129,18 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           Save
         </Button>
         <Button
-          variant="ghost"
-          size="icon"
+          variant="outline"
+          size="sm"
           onClick={onAIToggle}
           disabled={isLoading}
+          className="flex items-center gap-2"
         >
-          <Brain className="h-5 w-5" />
+          <Brain className="h-4 w-4" />
+          <span>AI Assistant</span>
+          <Badge variant="secondary" className="ml-1">Beta</Badge>
         </Button>
       </div>
+
       <Editor
         height="100%"
         defaultLanguage="plaintext"
