@@ -6,13 +6,15 @@ import {
   Folder,
   Plus,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createFile, createFolder, deleteFile } from "@/lib/files";
+import { useToast } from "@/hooks/use-toast";
 
 interface FileExplorerProps {
   onFileSelect: (file: string) => void;
@@ -25,10 +27,23 @@ interface FileNode {
   children?: FileNode[];
 }
 
+const ALLOWED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/msword",
+  "application/vnd.ms-excel",
+];
+
 export default function FileExplorer({ onFileSelect, selectedFile }: FileExplorerProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set([""]));
   const [newItemPath, setNewItemPath] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: files = [], refetch } = useQuery<FileNode[]>({
     queryKey: ["/api/files"],
@@ -42,6 +57,54 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
       newExpanded.add(path);
     }
     setExpandedFolders(newExpanded);
+  };
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>, path: string = "") => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({
+        title: "Error",
+        description: "File type not supported",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("path", path);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({
+        title: "Success",
+        description: "File uploaded successfully",
+      });
+
+      refetch();
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload file",
+        variant: "destructive",
+      });
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const startNewItem = (path: string, type: "file" | "folder") => {
@@ -125,14 +188,35 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
 
           <div className="hidden group-hover:flex items-center gap-1">
             {node.type === "folder" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => startNewItem(fullPath, "file")}
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.click();
+                    }
+                  }}
+                >
+                  <Upload className="h-3 w-3" />
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => handleUpload(e, fullPath)}
+                  accept={ALLOWED_FILE_TYPES.join(",")}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => startNewItem(fullPath, "file")}
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"
@@ -176,13 +260,33 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
     <div className="p-2">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-semibold">Files</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => startNewItem("", "folder")}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (fileInputRef.current) {
+                fileInputRef.current.click();
+              }
+            }}
+          >
+            <Upload className="h-4 w-4" />
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            onChange={(e) => handleUpload(e)}
+            accept={ALLOWED_FILE_TYPES.join(",")}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => startNewItem("", "folder")}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <ScrollArea className="h-[calc(100vh-5rem)]">
         {files.map((node) => renderTree(node))}

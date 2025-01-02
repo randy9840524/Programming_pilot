@@ -7,10 +7,19 @@ import OpenAI from "openai";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import multer from "multer";
+import { fileTypeFromBuffer } from "file-type";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
 
 interface FileNode {
   name: string;
@@ -23,6 +32,57 @@ export function registerRoutes(app: Express): Server {
   const monacoDir = path.resolve(__dirname, '../node_modules/monaco-editor');
   app.use('/monaco-editor', express.static(path.join(monacoDir, 'min')));
   app.use('/monaco-editor/esm', express.static(path.join(monacoDir, 'esm')));
+
+  // File upload endpoint
+  app.post("/api/upload", upload.single("file"), async (req, res) => {
+    try {
+      const file = req.file;
+      const folderPath = req.body.path || "";
+
+      if (!file) {
+        return res.status(400).send("No file uploaded");
+      }
+
+      // Verify file type
+      const fileType = await fileTypeFromBuffer(file.buffer);
+      if (!fileType) {
+        return res.status(400).send("Invalid file type");
+      }
+
+      const fileName = file.originalname;
+      const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
+
+      const [existing] = await db
+        .select()
+        .from(files)
+        .where(eq(files.path, fullPath));
+
+      if (existing) {
+        return res.status(400).send("File already exists");
+      }
+
+      // Store file in database
+      const [newFile] = await db
+        .insert(files)
+        .values({
+          path: fullPath,
+          name: fileName,
+          type: "file",
+          content: file.buffer.toString("base64"),
+          metadata: {
+            mimeType: file.mimetype,
+            size: file.size,
+            lastModified: new Date().toISOString(),
+          },
+        })
+        .returning();
+
+      res.status(201).json(newFile);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      res.status(500).send("Failed to upload file");
+    }
+  });
 
   // File operations
   app.get("/api/files", async (_req, res) => {
@@ -46,6 +106,13 @@ export function registerRoutes(app: Express): Server {
 
       if (!file) {
         return res.status(404).send("File not found");
+      }
+
+      // If the file is binary (has base64 content), decode and send with proper content type
+      if (file.metadata?.mimeType) {
+        const buffer = Buffer.from(file.content, "base64");
+        res.setHeader("Content-Type", file.metadata.mimeType);
+        return res.send(buffer);
       }
 
       res.json(file);

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import Editor from "@monaco-editor/react";
+import { Editor } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import DocumentPreview from "./DocumentPreview";
 
 interface EditorProps {
   file: string | null;
@@ -12,6 +13,7 @@ interface EditorProps {
 export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const editorRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fileData, setFileData] = useState<any>(null);
   const { toast } = useToast();
 
   function handleEditorDidMount(editor: any) {
@@ -23,18 +25,27 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
     setIsLoading(true);
     fetch(`/api/files/${encodeURIComponent(file)}`)
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) {
           throw new Error(`Failed to load file: ${res.statusText}`);
         }
-        return res.json();
+        const contentType = res.headers.get("content-type");
+        if (contentType?.startsWith("application/json")) {
+          return res.json();
+        }
+        return {
+          path: file,
+          content: null,
+          metadata: { mimeType: contentType },
+        };
       })
       .then((data) => {
-        if (editorRef.current) {
-          editorRef.current.setValue(data.content || "");
+        setFileData(data);
+        if (data.content !== null) {
+          editorRef.current?.setValue(data.content || "");
           const ext = file.split(".").pop() || "";
           const language = getLanguageFromExt(ext);
-          editorRef.current.updateOptions({ language });
+          editorRef.current?.updateOptions({ language });
         }
       })
       .catch((error) => {
@@ -51,7 +62,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   }, [file, toast]);
 
   const handleSave = async () => {
-    if (!file || !editorRef.current) return;
+    if (!file || !editorRef.current || !fileData?.content) return;
 
     try {
       const content = editorRef.current.getValue();
@@ -81,6 +92,30 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     }
   };
 
+  const isPreviewableDocument = (mimeType?: string) => {
+    if (!mimeType) return false;
+    return (
+      mimeType.startsWith("image/") ||
+      mimeType === "application/pdf" ||
+      mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      mimeType === "application/msword" ||
+      mimeType === "application/vnd.ms-excel"
+    );
+  };
+
+  if (!file) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        Select a file to edit
+      </div>
+    );
+  }
+
+  if (fileData?.metadata?.mimeType && isPreviewableDocument(fileData.metadata.mimeType)) {
+    return <DocumentPreview file={file} type={fileData.metadata.mimeType} />;
+  }
+
   return (
     <div className="h-full relative">
       <div className="absolute top-2 right-2 flex gap-2 z-10">
@@ -88,7 +123,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           variant="secondary"
           size="sm"
           onClick={handleSave}
-          disabled={isLoading}
+          disabled={isLoading || !fileData?.content}
         >
           Save
         </Button>
@@ -103,12 +138,12 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
       </div>
       <Editor
         height="100%"
-        defaultLanguage="typescript"
+        defaultLanguage="plaintext"
         theme="vs-dark"
-        loading={<div>Loading...</div>}
+        loading={<div className="p-4">Loading editor...</div>}
         onMount={handleEditorDidMount}
         options={{
-          minimap: { enabled: true },
+          minimap: { enabled: false },
           fontSize: 14,
           lineNumbers: "on",
           scrollBeyondLastLine: false,
@@ -116,6 +151,13 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           padding: { top: 16 },
           wordWrap: "on",
           automaticLayout: true,
+          tabSize: 2,
+          insertSpaces: true,
+          detectIndentation: true,
+          smoothScrolling: true,
+          cursorBlinking: "blink",
+          cursorSmoothCaretAnimation: "on",
+          mouseWheelZoom: true,
         }}
       />
     </div>

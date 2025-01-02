@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -43,7 +44,17 @@ export default function CommandPalette() {
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a command or search..." />
+        <VisuallyHidden>
+          <h2 id="command-dialog-title">Command Palette</h2>
+          <p id="command-dialog-description">
+            Use the command palette to navigate and perform actions.
+          </p>
+        </VisuallyHidden>
+        <CommandInput 
+          placeholder="Type a command or search..." 
+          aria-labelledby="command-dialog-title"
+          aria-describedby="command-dialog-description"
+        />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Actions">

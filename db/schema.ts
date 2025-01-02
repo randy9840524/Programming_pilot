@@ -11,6 +11,7 @@ export const files = pgTable("files", {
     language?: string;
     lastModified?: string;
     size?: number;
+    mimeType?: string;
   }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
