@@ -5,6 +5,7 @@ import { Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import DocumentPreview from "./DocumentPreview";
+import FileSync from "./FileSync";
 
 interface EditorProps {
   file: string | null;
@@ -12,10 +13,14 @@ interface EditorProps {
 }
 
 interface CollaborationMessage {
-  type: 'cursor' | 'selection' | 'edit' | 'user_left';
+  type: 'cursor' | 'selection' | 'edit' | 'user_joined' | 'user_left';
   userId: string;
   file: string;
-  data: any;
+  data: {
+    position?: { line: number; column: number };
+    selection?: { start: { line: number; column: number }; end: { line: number; column: number } };
+    content?: string;
+  };
 }
 
 export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
@@ -26,54 +31,17 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [collaborators, setCollaborators] = useState(new Set<string>());
   const { toast } = useToast();
 
-  // WebSocket connection
-  useEffect(() => {
-    if (!file) return;
-
-    const ws = new WebSocket(`ws://${window.location.host}/ws/collaborative`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      const message: CollaborationMessage = JSON.parse(event.data);
-      const editor = editorRef.current;
-      if (!editor) return;
-
-      switch (message.type) {
-        case 'cursor':
-          // Handle cursor updates
-          setCollaborators(prev => new Set(prev).add(message.userId));
-          break;
-        case 'selection':
-          // Handle selection updates
-          break;
-        case 'edit':
-          // Handle content updates
-          if (message.data.content) {
-            const currentPosition = editor.getPosition();
-            editor.setValue(message.data.content);
-            editor.setPosition(currentPosition);
-          }
-          break;
-        case 'user_left':
-          setCollaborators(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(message.userId);
-            return newSet;
-          });
-          break;
-      }
-    };
-
-    return () => {
-      ws.close();
-      wsRef.current = null;
-    };
-  }, [file]);
+  const handleContentChange = (newContent: string) => {
+    if (editorRef.current) {
+      const currentPosition = editorRef.current.getPosition();
+      editorRef.current.setValue(newContent);
+      editorRef.current.setPosition(currentPosition);
+    }
+  };
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
 
-    // Set up collaboration features
     editor.onDidChangeModelContent(() => {
       if (!wsRef.current || !file) return;
 
@@ -85,14 +53,39 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
       }));
     });
 
-    editor.onDidChangeCursorPosition(() => {
+    editor.onDidChangeCursorPosition((e: any) => {
       if (!wsRef.current || !file) return;
 
-      const position = editor.getPosition();
       wsRef.current.send(JSON.stringify({
         type: 'cursor',
         file,
-        data: { position }
+        data: {
+          position: {
+            line: e.position.lineNumber,
+            column: e.position.column
+          }
+        }
+      }));
+    });
+
+    editor.onDidChangeCursorSelection((e: any) => {
+      if (!wsRef.current || !file) return;
+
+      wsRef.current.send(JSON.stringify({
+        type: 'selection',
+        file,
+        data: {
+          selection: {
+            start: {
+              line: e.selection.startLineNumber,
+              column: e.selection.startColumn
+            },
+            end: {
+              line: e.selection.endLineNumber,
+              column: e.selection.endColumn
+            }
+          }
+        }
       }));
     });
   }
@@ -138,49 +131,6 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
       });
   }, [file, toast]);
 
-  const handleSave = async () => {
-    if (!file || !editorRef.current || !fileData?.content) return;
-
-    try {
-      const content = editorRef.current.getValue();
-      const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save file");
-      }
-
-      toast({
-        title: "Success",
-        description: "File saved successfully",
-      });
-    } catch (error) {
-      console.error("Failed to save file:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save file",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const isPreviewableDocument = (mimeType?: string) => {
-    if (!mimeType) return false;
-    return (
-      mimeType.startsWith("image/") ||
-      mimeType === "application/pdf" ||
-      mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      mimeType === "application/msword" ||
-      mimeType === "application/vnd.ms-excel"
-    );
-  };
-
   if (!file) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -195,6 +145,14 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
   return (
     <div className="h-full relative">
+      {file && fileData && (
+        <FileSync
+          fileId={file}
+          content={fileData.content}
+          onContentChange={handleContentChange}
+        />
+      )}
+
       <div className="absolute top-2 right-2 flex gap-2 z-10">
         {collaborators.size > 0 && (
           <div className="flex items-center gap-1">
@@ -206,7 +164,31 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         <Button
           variant="secondary"
           size="sm"
-          onClick={handleSave}
+          onClick={() => {
+            // Handle save functionality
+            if (!file || !editorRef.current || !fileData?.content) return;
+            const content = editorRef.current.getValue();
+            fetch(`/api/files/${encodeURIComponent(file)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content }),
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error("Failed to save file");
+                toast({
+                  title: "Success",
+                  description: "File saved successfully",
+                });
+              })
+              .catch((error) => {
+                console.error("Failed to save file:", error);
+                toast({
+                  title: "Error",
+                  description: "Failed to save file",
+                  variant: "destructive",
+                });
+              });
+          }}
           disabled={isLoading || !fileData?.content}
         >
           Save
