@@ -30,7 +30,11 @@ export default function CommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  const handleAskAI = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
     if (!query.trim()) {
       toast({
         title: "Error",
@@ -81,16 +85,6 @@ export default function CommandPalette() {
     }
   };
 
-  // Separate keyboard event handler
-  const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (!isLoading && query.trim()) {
-        await handleAskAI();
-      }
-    }
-  };
-
   return (
     <>
       <Button
@@ -111,21 +105,20 @@ export default function CommandPalette() {
             Use the command palette to navigate and perform actions.
           </p>
         </VisuallyHidden>
-        <div className="flex items-center gap-2 p-2">
+        <form onSubmit={handleSubmit} className="flex items-center gap-2 p-2">
           <CommandInput 
             placeholder="Ask AI Assistant..." 
             value={query}
             onValueChange={setQuery}
-            onKeyDown={handleKeyDown}
             aria-labelledby="command-dialog-title"
             aria-describedby="command-dialog-description"
             className="flex-1"
             autoFocus
           />
           <Button 
+            type="submit"
             size="sm"
             className={`shrink-0 ${isLoading ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white`}
-            onClick={() => handleAskAI()}
             disabled={isLoading || !query.trim()}
           >
             {isLoading ? (
@@ -134,14 +127,14 @@ export default function CommandPalette() {
               <Send className="h-4 w-4" />
             )}
           </Button>
-        </div>
+        </form>
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="AI Assistant">
             <CommandItem
               onSelect={() => {
                 if (!isLoading && query.trim()) {
-                  void handleAskAI();
+                  void handleSubmit();
                 }
               }}
               disabled={isLoading || !query.trim()}
