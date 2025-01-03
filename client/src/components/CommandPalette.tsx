@@ -8,12 +8,15 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useEffect, useState } from "react";
-import { Search, Plus, Save, FileText, FolderPlus, Upload } from "lucide-react";
+import { Search, Plus, Save, FileText, FolderPlus, Upload, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -26,9 +29,58 @@ export default function CommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  const runCommand = (command: () => void) => {
+  const runCommand = async (command: () => void | Promise<void>) => {
     setOpen(false);
-    command();
+    try {
+      await command();
+    } catch (error) {
+      console.error("Failed to run command:", error);
+      toast({
+        title: "Error",
+        description: "Failed to execute command",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAskAI = async () => {
+    if (!query.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a question first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: "",
+          prompt: query
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      toast({
+        title: "AI Response",
+        description: data.response,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to get AI response",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -51,11 +103,24 @@ export default function CommandPalette() {
             Use the command palette to navigate and perform actions.
           </p>
         </VisuallyHidden>
-        <CommandInput 
-          placeholder="Type a command or search..." 
-          aria-labelledby="command-dialog-title"
-          aria-describedby="command-dialog-description"
-        />
+        <div className="flex items-center gap-2 p-2">
+          <CommandInput 
+            placeholder="Ask AI Assistant..." 
+            value={query}
+            onValueChange={setQuery}
+            aria-labelledby="command-dialog-title"
+            aria-describedby="command-dialog-description"
+            className="flex-1"
+          />
+          <Button 
+            variant="destructive"
+            size="sm"
+            onClick={() => runCommand(handleAskAI)}
+            className="shrink-0"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="File Operations">
@@ -66,12 +131,6 @@ export default function CommandPalette() {
               New File
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => console.log("New Folder"))}
-            >
-              <FolderPlus className="mr-2 h-4 w-4" />
-              New Folder
-            </CommandItem>
-            <CommandItem
               onSelect={() => runCommand(() => console.log("Save"))}
             >
               <Save className="mr-2 h-4 w-4" />
@@ -79,12 +138,12 @@ export default function CommandPalette() {
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Upload">
+          <CommandGroup heading="AI Assistant">
             <CommandItem
-              onSelect={() => runCommand(() => console.log("Upload File"))}
+              onSelect={() => runCommand(handleAskAI)}
             >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload File
+              <Send className="mr-2 h-4 w-4" />
+              Ask AI Assistant
             </CommandItem>
           </CommandGroup>
         </CommandList>
