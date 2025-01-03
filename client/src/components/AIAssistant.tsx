@@ -9,14 +9,8 @@ interface AIAssistantProps {
   file: string | null;
 }
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  error?: boolean;
-}
-
 export default function AIAssistant({ file }: AIAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -30,68 +24,48 @@ export default function AIAssistant({ file }: AIAssistantProps) {
       toast({
         title: "Error",
         description: file ? "Please enter a question" : "Please select a file first",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
 
-    const question = input.trim();
-    setInput("");
-    setMessages(prev => [...prev, { role: "user", content: question }]);
     setIsLoading(true);
+    const userMessage = input.trim();
+    setInput("");
+    setMessages(prev => [...prev, `You: ${userMessage}`]);
 
     try {
-      // First fetch the file content
-      const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`, {
-        credentials: 'include'
-      });
-
-      if (!fileResponse.ok) {
-        throw new Error(`Failed to load file: ${await fileResponse.text()}`);
-      }
-
-      const fileData = await fileResponse.json();
-      if (!fileData.content) {
-        throw new Error("File content is empty");
-      }
-
-      // Send for analysis
-      const prompt = `${question}\n\nHere's the code:\n\`\`\`\n${fileData.content}\n\`\`\``;
-
-      const analysisResponse = await fetch('/api/analyze', {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({
+          prompt: userMessage,
+          filePath: file
+        }),
         credentials: 'include'
       });
 
-      const data = await analysisResponse.json();
-
-      if (!analysisResponse.ok) {
-        throw new Error(data.message || data.error || "Analysis failed");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to get AI response');
       }
 
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: data.response 
-      }]);
-    } catch (error: any) {
-      console.error("AI request failed:", error);
-      const errorMessage = error.message || "Failed to get AI response";
+      const data = await response.json();
+      if (!data.response) {
+        throw new Error('Invalid response from AI');
+      }
 
+      setMessages(prev => [...prev, `AI: ${data.response}`]);
+    } catch (error: any) {
+      console.error("Failed to get AI response:", error);
       toast({
         title: "Error",
-        description: errorMessage,
-        variant: "destructive",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive"
       });
-
-      setMessages(prev => [...prev, { 
-        role: "assistant", 
-        content: `Error: ${errorMessage}`,
-        error: true
-      }]);
+      setMessages(prev => [...prev, `Error: ${error.message || "Failed to get AI response"}`]);
     } finally {
       setIsLoading(false);
     }
@@ -100,46 +74,24 @@ export default function AIAssistant({ file }: AIAssistantProps) {
   return (
     <div className="h-full flex flex-col bg-background border-l">
       <div className="border-b p-4">
-        <h2 className="text-xl font-semibold mb-2">AI Assistant</h2>
-        <p className="text-sm text-muted-foreground">
-          Ask questions about your code and get intelligent responses
-        </p>
+        <h2 className="text-xl font-semibold">AI Assistant</h2>
+        <p className="text-sm text-muted-foreground">Ask questions about your code</p>
       </div>
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {messages.map((message, i) => (
-            <div
-              key={i}
-              className={`flex ${
-                message.role === "assistant" ? "justify-start" : "justify-end"
-              }`}
-            >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === "assistant"
-                    ? message.error 
-                      ? "bg-destructive/10 text-destructive" 
-                      : "bg-secondary text-secondary-foreground"
-                    : "bg-primary text-primary-foreground"
-                }`}
-              >
-                <pre className="whitespace-pre-wrap break-words text-sm">
-                  {message.content}
-                </pre>
-              </div>
+          {messages.map((msg, i) => (
+            <div key={i} className="text-sm">
+              {msg.startsWith("Error:") ? (
+                <p className="text-destructive">{msg}</p>
+              ) : (
+                <p className="whitespace-pre-wrap">{msg}</p>
+              )}
             </div>
           ))}
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground">
-              <p className="text-lg mb-2">Welcome to AI Assistant!</p>
-              <p>Start by asking a question about your code.</p>
-              <p className="text-sm mt-4">Examples:</p>
-              <ul className="text-sm mt-1 space-y-1">
-                <li>"What does this code do?"</li>
-                <li>"How can I improve this function?"</li>
-                <li>"Is there a bug in this code?"</li>
-              </ul>
+              <p>Select a file and start asking questions</p>
             </div>
           )}
         </div>
@@ -153,22 +105,15 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (!isLoading && input.trim()) {
-                  void handleSubmit();
-                }
+                void handleSubmit();
               }
             }}
-            placeholder={
-              file
-                ? "Ask a question about your code..."
-                : "Select a file to start chatting"
-            }
-            className="min-h-[80px] resize-none"
+            placeholder={file ? "Ask a question..." : "Select a file first"}
+            className="min-h-[80px]"
             disabled={isLoading || !file}
           />
-          <Button
+          <Button 
             type="submit"
-            size="icon"
             className="self-end"
             disabled={isLoading || !input.trim() || !file}
           >
@@ -179,9 +124,6 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Press Enter to send, Shift + Enter for new line
-        </p>
       </form>
     </div>
   );
