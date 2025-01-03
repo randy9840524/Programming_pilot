@@ -1,24 +1,54 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Upload, X, Image as ImageIcon, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface FilePreview {
+  name: string;
+  type: string;
+  url: string;
+}
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [files, setFiles] = useState<FilePreview[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFiles = event.target.files;
+    if (!uploadedFiles) return;
+
+    Array.from(uploadedFiles).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const url = e.target?.result as string;
+        setFiles(prev => [...prev, {
+          name: file.name,
+          type: file.type,
+          url
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeFile = (fileName: string) => {
+    setFiles(prev => prev.filter(file => file.name !== fileName));
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const message = input.trim();
 
-    if (!message) {
+    if (!message && files.length === 0) {
       toast({
         title: "Error",
-        description: "Please enter your development request",
+        description: "Please enter your request or upload a file to analyze",
         variant: "destructive"
       });
       return;
@@ -34,7 +64,13 @@ export default function AIAssistant() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: message }),
+        body: JSON.stringify({
+          prompt: message,
+          files: files.map(f => ({
+            type: f.type,
+            data: f.url.split(',')[1] // Remove data URL prefix
+          }))
+        }),
       });
 
       if (!response.ok) {
@@ -43,6 +79,7 @@ export default function AIAssistant() {
 
       const data = await response.json();
       setMessages(prev => [...prev, `AI: ${data.response}`]);
+      setFiles([]); // Clear files after analysis
     } catch (error: any) {
       console.error("Development request failed:", error);
       toast({
@@ -61,7 +98,7 @@ export default function AIAssistant() {
       <div className="border-b p-4">
         <h2 className="text-xl font-semibold">Development Assistant</h2>
         <p className="text-sm text-muted-foreground">
-          I can help you build and modify your application
+          I can help analyze code, images, and files
         </p>
       </div>
 
@@ -76,15 +113,59 @@ export default function AIAssistant() {
               )}
             </div>
           ))}
-          {messages.length === 0 && (
+          {files.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Uploaded Files:</p>
+              {files.map((file) => (
+                <div key={file.name} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
+                  {file.type.startsWith('image/') ? (
+                    <ImageIcon className="h-4 w-4" />
+                  ) : (
+                    <FileText className="h-4 w-4" />
+                  )}
+                  <span className="text-sm flex-1 truncate">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(file.name)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          {messages.length === 0 && files.length === 0 && (
             <div className="text-center text-muted-foreground">
-              <p>Describe what you want to build or modify in your application</p>
+              <p>Upload files or describe what you want to analyze</p>
             </div>
           )}
         </div>
       </ScrollArea>
 
       <form onSubmit={handleSubmit} className="border-t p-4">
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          className="hidden"
+          multiple
+          accept="image/*,.txt,.js,.jsx,.ts,.tsx,.py,.html,.css,application/json"
+        />
+
+        <div className="flex gap-2 mb-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Files
+          </Button>
+        </div>
+
         <div className="flex gap-2">
           <Textarea
             value={input}
@@ -92,18 +173,18 @@ export default function AIAssistant() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (!isLoading && input.trim()) {
+                if (!isLoading && (input.trim() || files.length > 0)) {
                   void handleSubmit(e);
                 }
               }
             }}
-            placeholder="Describe your development request..."
+            placeholder="Describe what you want to analyze..."
             className="min-h-[80px] resize-none"
           />
           <Button
             type="submit"
             className="self-end"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (!input.trim() && files.length === 0)}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
