@@ -16,29 +16,48 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
 
     const updatePreview = async () => {
       try {
-        // Convert the code to a self-contained React component
-        const componentCode = `
-          ${code}
-          // Make sure the component is the default export
-          export default function PreviewComponent() {
-            return ${code};
-          }
+        // Create a proper React component from the code
+        const preview = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              body {
+                margin: 0;
+                padding: 1rem;
+                min-height: 100vh;
+                background: transparent;
+              }
+              #root {
+                height: 100%;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="root"></div>
+            <script type="module">
+              import React from 'https://esm.sh/react@18.2.0';
+              import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
+              import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+
+              const Component = () => {
+                try {
+                  return ${code};
+                } catch (error) {
+                  return React.createElement('div', { style: { color: 'red' } }, error.message);
+                }
+              };
+
+              const root = createRoot(document.getElementById('root'));
+              root.render(React.createElement(Component));
+            </script>
+          </body>
+          </html>
         `;
-
-        const response = await fetch('/api/preview', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code: componentCode }),
-        });
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        const result = await response.json();
-        setPreview(result.preview);
+        setPreview(preview);
         setError(null);
       } catch (err: any) {
         setError(err.message);
