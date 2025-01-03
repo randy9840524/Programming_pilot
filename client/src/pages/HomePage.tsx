@@ -6,7 +6,7 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
 
   const handleGetStarted = () => {
-    setLocation("/payment");
+    setLocation("/editor");
   };
 
   return (
@@ -19,12 +19,7 @@ export default function HomePage() {
       >
         {/* Background Image */}
         <div 
-          className="absolute inset-0 -z-10"
-          style={{
-            backgroundImage: 'url(/background.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
+          className="absolute inset-0 -z-10 bg-black"
         />
 
         {/* Header */}
@@ -59,11 +54,11 @@ export default function HomePage() {
             className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-xl rounded"
             onClick={handleGetStarted}
           >
-            <span className="mr-2">Subscribe Now</span>
+            <span className="mr-2">Enter</span>
             <CreditCard className="h-6 w-6" />
           </Button>
           <p className="mt-4 text-sm text-gray-400">
-            Secure payments via VISA, Mastercard, or PayPal
+            Next-generation development environment
           </p>
         </div>
       </div>
