@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/pg-core";
+import { drizzle } from "drizzle-orm/pg-pool";
 import { Pool } from 'pg';
 import * as schema from "@db/schema";
 
@@ -10,8 +10,6 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 5,
-  ssl: true,
 });
 
 export const db = drizzle(pool, { schema });
