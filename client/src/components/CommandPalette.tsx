@@ -48,20 +48,28 @@ export default function CommandPalette() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: query
+          prompt: query.trim()
         }),
+        credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to get AI response');
       }
 
       const data = await response.json();
+
+      if (!data.response) {
+        throw new Error('Invalid response from AI');
+      }
+
       toast({
         title: "AI Response",
         description: data.response,
       });
       setQuery(""); // Clear input after successful response
+      setOpen(false); // Close the command palette
     } catch (error: any) {
       console.error("Failed to get AI response:", error);
       toast({
@@ -77,7 +85,7 @@ export default function CommandPalette() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleAskAI();
+      void handleAskAI();
     }
   };
 
@@ -113,8 +121,8 @@ export default function CommandPalette() {
           />
           <Button 
             size="sm"
-            className="shrink-0 bg-red-600 hover:bg-red-700 text-white"
-            onClick={handleAskAI}
+            className={`shrink-0 ${isLoading ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white`}
+            onClick={() => void handleAskAI()}
             disabled={isLoading || !query.trim()}
           >
             {isLoading ? (
@@ -128,7 +136,7 @@ export default function CommandPalette() {
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="AI Assistant">
             <CommandItem
-              onSelect={handleAskAI}
+              onSelect={() => void handleAskAI()}
               disabled={isLoading || !query.trim()}
             >
               <Send className="mr-2 h-4 w-4" />
@@ -140,7 +148,10 @@ export default function CommandPalette() {
             <CommandItem
               onSelect={() => {
                 setOpen(false);
-                console.log("New File");
+                toast({
+                  title: "New File",
+                  description: "Creating new file...",
+                });
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -149,7 +160,10 @@ export default function CommandPalette() {
             <CommandItem
               onSelect={() => {
                 setOpen(false);
-                console.log("Save");
+                toast({
+                  title: "Save",
+                  description: "Saving changes...",
+                });
               }}
             >
               <Save className="mr-2 h-4 w-4" />

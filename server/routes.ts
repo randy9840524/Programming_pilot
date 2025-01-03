@@ -213,7 +213,7 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-  // AI Analysis endpoint
+  // AI Analysis endpoint (replaced with edited code)
   app.post("/api/analyze", async (req, res) => {
     try {
       const { prompt } = req.body;
