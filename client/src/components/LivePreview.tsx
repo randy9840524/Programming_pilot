@@ -14,50 +14,20 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   useEffect(() => {
     if (!code) return;
 
-    const updatePreview = async () => {
+    const generatePreview = async () => {
       try {
-        // Create a proper React component from the code
-        const preview = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <script src="https://cdn.tailwindcss.com"></script>
-            <style>
-              body {
-                margin: 0;
-                padding: 1rem;
-                min-height: 100vh;
-                background: transparent;
-              }
-              #root {
-                height: 100%;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="root"></div>
-            <script type="module">
-              import React from 'https://esm.sh/react@18.2.0';
-              import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
-              import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+        const response = await fetch('/api/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
 
-              const Component = () => {
-                try {
-                  return ${code};
-                } catch (error) {
-                  return React.createElement('div', { style: { color: 'red' } }, error.message);
-                }
-              };
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
 
-              const root = createRoot(document.getElementById('root'));
-              root.render(React.createElement(Component));
-            </script>
-          </body>
-          </html>
-        `;
-        setPreview(preview);
+        const data = await response.json();
+        setPreview(data.preview);
         setError(null);
       } catch (err: any) {
         setError(err.message);
@@ -65,7 +35,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       }
     };
 
-    const timeoutId = setTimeout(updatePreview, 500);
+    const timeoutId = setTimeout(generatePreview, 500);
     return () => clearTimeout(timeoutId);
   }, [code]);
 
@@ -99,8 +69,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0 bg-white rounded-lg"
-      sandbox="allow-scripts"
+      className="w-full h-full border-0 rounded-lg"
+      sandbox="allow-scripts allow-popups"
       title="Live Preview"
     />
   );

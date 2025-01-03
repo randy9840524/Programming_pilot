@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, Settings } from "lucide-react";
+import { Menu, Settings, Terminal, Code2, Play, Save, RefreshCw, Database } from "lucide-react";
 import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
@@ -36,11 +36,32 @@ export default function EditorPage() {
         >
           <Menu className="h-5 w-5" />
         </Button>
+
         <div className="flex-1 flex items-center gap-4">
           <span className="font-bold text-lg">CodeCraft IDE</span>
           <ProjectSelector />
           <CommandPalette />
+
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            <Button variant="secondary" size="sm" className="flex items-center gap-2">
+              <Play className="h-4 w-4" />
+              Run
+            </Button>
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              Console
+            </Button>
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Database
+            </Button>
+          </div>
         </div>
+
         <Button
           variant="outline"
           size="sm"
@@ -70,7 +91,7 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 50 : 85}>
+          <ResizablePanel defaultSize={showAI ? 45 : 85}>
             <Editor
               file={selectedFile}
               onAIToggle={() => setShowAI(!showAI)}
@@ -80,7 +101,7 @@ export default function EditorPage() {
           {showAI && (
             <>
               <ResizableHandle />
-              <ResizablePanel defaultSize={35} minSize={25}>
+              <ResizablePanel defaultSize={40} minSize={30}>
                 <AIAssistant />
               </ResizablePanel>
             </>

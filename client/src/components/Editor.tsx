@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Editor } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
-import { Brain } from "lucide-react";
+import { Brain, Play, Save, Code2, Eye, RefreshCw, Download, Upload, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import DocumentPreview from "./DocumentPreview";
@@ -9,6 +9,7 @@ import FileSync from "./FileSync";
 import LivePreview from "./LivePreview";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EditorProps {
   file: string | null;
@@ -24,6 +25,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildLog, setBuildLog] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("editor");
 
   const { data: buildStatus } = useQuery({
     queryKey: ['/api/build/status'],
@@ -34,69 +36,72 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   useEffect(() => {
     if (buildStatus?.status === 'complete') {
       setIsBuilding(false);
+      setActiveTab("preview");
     }
     if (buildStatus?.logs) {
       setBuildLog(buildStatus.logs);
     }
   }, [buildStatus]);
 
-  const handleContentChange = (newContent: string) => {
-    if (editorRef.current) {
-      const currentPosition = editorRef.current.getPosition();
-      editorRef.current.setValue(newContent);
-      editorRef.current.setPosition(currentPosition);
+  const handleSave = async () => {
+    if (!file || !editorRef.current || !fileData?.content) return;
+    const content = editorRef.current.getValue();
+    try {
+      const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save file");
+
+      toast({
+        title: "Success",
+        description: "File saved successfully",
+      });
+    } catch (error) {
+      console.error("Failed to save file:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBuild = async () => {
+    if (!file || !editorRef.current) return;
+    setIsBuilding(true);
+    const content = editorRef.current.getValue();
+
+    try {
+      const response = await fetch('/api/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, file }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({
+        title: "Build Started",
+        description: "Your changes are being built...",
+      });
+    } catch (error) {
+      console.error("Build failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start build",
+        variant: "destructive",
+      });
+      setIsBuilding(false);
     }
   };
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
-
-    editor.onDidChangeModelContent(() => {
-      if (!wsRef.current || !file) return;
-
-      const content = editor.getValue();
-      wsRef.current.send(JSON.stringify({
-        type: 'edit',
-        file,
-        data: { content }
-      }));
-    });
-
-    editor.onDidChangeCursorPosition((e: any) => {
-      if (!wsRef.current || !file) return;
-
-      wsRef.current.send(JSON.stringify({
-        type: 'cursor',
-        file,
-        data: {
-          position: {
-            line: e.position.lineNumber,
-            column: e.position.column
-          }
-        }
-      }));
-    });
-
-    editor.onDidChangeCursorSelection((e: any) => {
-      if (!wsRef.current || !file) return;
-
-      wsRef.current.send(JSON.stringify({
-        type: 'selection',
-        file,
-        data: {
-          selection: {
-            start: {
-              line: e.selection.startLineNumber,
-              column: e.selection.startColumn
-            },
-            end: {
-              line: e.selection.endLineNumber,
-              column: e.selection.endColumn
-            }
-          }
-        }
-      }));
-    });
   }
 
   useEffect(() => {
@@ -152,148 +157,119 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     return <DocumentPreview file={file} type={fileData.metadata.mimeType} />;
   }
 
-  const handleBuild = async () => {
-    if (!file || !editorRef.current) return;
-
-    setIsBuilding(true);
-    const content = editorRef.current.getValue();
-
-    try {
-      const response = await fetch('/api/build', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, file }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      toast({
-        title: "Build Started",
-        description: "Your changes are being built...",
-      });
-    } catch (error) {
-      console.error("Build failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to start build",
-        variant: "destructive",
-      });
-      setIsBuilding(false);
-    }
-  };
-
   return (
-    <div className="h-full relative flex flex-col">
-      <div className="absolute top-2 right-2 flex gap-2 z-10">
-        {collaborators.size > 0 && (
-          <div className="flex items-center gap-1">
+    <div className="h-full flex flex-col">
+      <div className="border-b p-4 flex items-center justify-between bg-background">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSave}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            <span>Save</span>
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleBuild}
+            disabled={isLoading || isBuilding}
+            className="flex items-center gap-2"
+          >
+            <Play className="h-4 w-4" />
+            <span>{isBuilding ? "Building..." : "Build & Run"}</span>
+            {isBuilding && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+          </Button>
+
+          <div className="border-l h-6 mx-2" />
+
+          <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="editor" className="flex items-center gap-2">
+                <Code2 className="h-4 w-4" />
+                Editor
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {collaborators.size > 0 && (
             <Badge variant="outline">
               {collaborators.size} collaborator{collaborators.size !== 1 ? 's' : ''}
             </Badge>
-          </div>
-        )}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            // Handle save functionality
-            if (!file || !editorRef.current || !fileData?.content) return;
-            const content = editorRef.current.getValue();
-            fetch(`/api/files/${encodeURIComponent(file)}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ content }),
-            })
-              .then((res) => {
-                if (!res.ok) throw new Error("Failed to save file");
-                toast({
-                  title: "Success",
-                  description: "File saved successfully",
-                });
-              })
-              .catch((error) => {
-                console.error("Failed to save file:", error);
-                toast({
-                  title: "Error",
-                  description: "Failed to save file",
-                  variant: "destructive",
-                });
-              });
-          }}
-          disabled={isLoading || !fileData?.content}
-        >
-          Save
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAIToggle}
-          disabled={isLoading}
-          className="flex items-center gap-2"
-        >
-          <Brain className="h-4 w-4" />
-          <span>AI Assistant</span>
-          <Badge variant="secondary" className="ml-1">Beta</Badge>
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleBuild}
-          disabled={isLoading || isBuilding}
-        >
-          {isBuilding ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Building...
-            </>
-          ) : (
-            "Build & Preview"
           )}
-        </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAIToggle}
+            className="flex items-center gap-2"
+          >
+            <Brain className="h-4 w-4" />
+            AI Assistant
+            <Badge variant="secondary" className="ml-1">Beta</Badge>
+          </Button>
+        </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-3 gap-4">
-        <div className="col-span-2 relative">
-          <Editor
-            height="100%"
-            defaultLanguage="plaintext"
-            theme="vs-dark"
-            loading={<div className="p-4">Loading editor...</div>}
-            onMount={handleEditorDidMount}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: "on",
-              scrollBeyondLastLine: false,
-              roundedSelection: false,
-              padding: { top: 16 },
-              wordWrap: "on",
-              automaticLayout: true,
-              tabSize: 2,
-              insertSpaces: true,
-              detectIndentation: true,
-              smoothScrolling: true,
-              cursorBlinking: "blink",
-              cursorSmoothCaretAnimation: "on",
-              mouseWheelZoom: true,
-            }}
-          />
-        </div>
+      <div className="flex-1 grid grid-cols-2 gap-4 p-4">
+        <TabsContent value="editor" className="mt-0">
+          <div className="h-full relative rounded-lg overflow-hidden border">
+            <Editor
+              height="100%"
+              defaultLanguage="plaintext"
+              theme="vs-dark"
+              loading={<div className="p-4">Loading editor...</div>}
+              onMount={handleEditorDidMount}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: "on",
+                scrollBeyondLastLine: false,
+                roundedSelection: false,
+                padding: { top: 16 },
+                wordWrap: "on",
+                automaticLayout: true,
+                tabSize: 2,
+                insertSpaces: true,
+                detectIndentation: true,
+                smoothScrolling: true,
+                cursorBlinking: "blink",
+                cursorSmoothCaretAnimation: "on",
+                mouseWheelZoom: true,
+              }}
+            />
+          </div>
+        </TabsContent>
 
-        <div className="flex flex-col">
-          <LivePreview code={editorRef.current?.getValue() || ''} isBuilding={isBuilding} />
+        <TabsContent value="preview" className="mt-0">
+          <div className="h-full flex flex-col gap-4">
+            <LivePreview 
+              code={editorRef.current?.getValue() || ''} 
+              isBuilding={isBuilding} 
+            />
 
-          {buildLog.length > 0 && (
-            <div className="mt-4 p-4 bg-secondary rounded-lg">
-              <h3 className="text-sm font-medium mb-2">Build Output</h3>
-              <pre className="text-xs whitespace-pre-wrap">
-                {buildLog.join('\n')}
-              </pre>
-            </div>
-          )}
-        </div>
+            {buildLog.length > 0 && (
+              <div className="p-4 bg-secondary rounded-lg">
+                <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Build Output
+                </h3>
+                <pre className="text-xs whitespace-pre-wrap">
+                  {buildLog.join('\n')}
+                </pre>
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </div>
     </div>
   );
@@ -302,7 +278,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 function getLanguageFromExt(ext: string): string {
   const map: Record<string, string> = {
     js: "javascript",
-    jsx: "javascript",
+    jsx: "javascript", 
     ts: "typescript",
     tsx: "typescript",
     py: "python",
