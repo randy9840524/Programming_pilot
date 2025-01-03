@@ -71,10 +71,12 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to upload file');
       }
 
       toast({
@@ -82,13 +84,13 @@ export default function FileExplorer({ onFileSelect, selectedFile }: FileExplore
         description: "File uploaded successfully",
       });
 
-      refetch();
+      await refetch();
       setShowUploadDialog(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
       toast({
         title: "Error",
-        description: "Failed to upload file",
+        description: error.message || "Failed to upload file",
         variant: "destructive",
       });
     }
