@@ -4,6 +4,9 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
+import { projects, insertProjectSchema, files } from "@db/schema";
+import { db } from "@db";
+import { eq } from "drizzle-orm";
 
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
@@ -39,6 +42,48 @@ async function getLatestFile(directory: string): Promise<string | null> {
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+
+  // Get all projects
+  app.get("/api/projects", async (_req, res) => {
+    try {
+      const allProjects = await db.select().from(projects);
+      res.json(allProjects);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  // Create new project
+  app.post("/api/projects", async (req, res) => {
+    try {
+      const result = insertProjectSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
+      }
+
+      const [project] = await db.insert(projects).values(result.data).returning();
+      res.json(project);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+
+  // Get project files
+  app.get("/api/projects/:id/files", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const projectFiles = await db
+        .select()
+        .from(files)
+        .where(eq(files.projectId, projectId));
+      res.json(projectFiles);
+    } catch (error) {
+      console.error("Failed to fetch project files:", error);
+      res.status(500).json({ message: "Failed to fetch project files" });
+    }
+  });
 
   // Simple health check endpoint
   app.get("/api/health", (_req, res) => {

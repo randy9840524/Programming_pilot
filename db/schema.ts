@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, jsonb, integer, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,8 +10,23 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  ownerId: integer("owner_id").references(() => users.id),
+  settings: jsonb("settings").$type<{
+    theme?: string;
+    language?: string;
+    framework?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id),
   path: text("path").notNull(),
   name: text("name").notNull(),
   type: text("type").notNull(),
@@ -28,6 +43,7 @@ export const files = pgTable("files", {
 
 export const codeSnippets = pgTable("code_snippets", {
   id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id),
   title: text("title").notNull(),
   description: text("description"),
   code: text("code").notNull(),
@@ -42,6 +58,15 @@ export const codeSnippets = pgTable("code_snippets", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Project schemas
+export const insertProjectSchema = createInsertSchema(projects, {
+  name: z.string().min(1, "Project name is required"),
+  description: z.string().optional(),
+});
+export const selectProjectSchema = createSelectSchema(projects);
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type SelectProject = z.infer<typeof selectProjectSchema>;
 
 // User schemas
 export const insertUserSchema = createInsertSchema(users, {

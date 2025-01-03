@@ -7,6 +7,7 @@ import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
+import ProjectSelector from "@/components/ProjectSelector";
 import { useMobile } from "@/hooks/use-mobile";
 
 export default function EditorPage() {
@@ -37,6 +38,7 @@ export default function EditorPage() {
         </Button>
         <div className="flex-1 flex items-center gap-4">
           <span className="font-bold text-lg">CodeCraft IDE</span>
+          <ProjectSelector />
           <CommandPalette />
         </div>
         <Button
