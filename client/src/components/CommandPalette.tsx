@@ -74,7 +74,7 @@ export default function CommandPalette() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleAskAI();
@@ -106,17 +106,16 @@ export default function CommandPalette() {
             placeholder="Ask AI Assistant..." 
             value={query}
             onValueChange={setQuery}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             aria-labelledby="command-dialog-title"
             aria-describedby="command-dialog-description"
             className="flex-1"
           />
           <Button 
-            variant="destructive"
             size="sm"
+            className="shrink-0 bg-red-600 hover:bg-red-700 text-white"
             onClick={handleAskAI}
-            disabled={isLoading}
-            className="shrink-0"
+            disabled={isLoading || !query.trim()}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -130,7 +129,7 @@ export default function CommandPalette() {
           <CommandGroup heading="AI Assistant">
             <CommandItem
               onSelect={handleAskAI}
-              disabled={isLoading}
+              disabled={isLoading || !query.trim()}
             >
               <Send className="mr-2 h-4 w-4" />
               Ask AI Assistant
