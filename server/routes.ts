@@ -13,10 +13,11 @@ import { fileTypeFromBuffer } from "file-type";
 import express from "express";
 
 // Initialize OpenAI with API key from environment variable
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// File upload configuration
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -25,7 +26,6 @@ const upload = multer({
 });
 
 export function registerRoutes(app: Express): Server {
-  // Create HTTP server
   const httpServer = createServer(app);
 
   // Set up authentication
@@ -212,63 +212,42 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
-  // AI Analysis endpoint
+  // Simple AI Analysis endpoint
   app.post("/api/analyze", async (req, res) => {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
+
     try {
-      const { prompt } = req.body;
-
-      if (!prompt) {
-        return res.status(400).json({ 
-          error: "Missing required parameters", 
-          message: "Prompt is required" 
-        });
-      }
-
-      if (!process.env.OPENAI_API_KEY) {
-        return res.status(500).json({ 
-          error: "Configuration Error", 
-          message: "OpenAI API key is not configured properly" 
-        });
-      }
-
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "You are an expert programming assistant. Analyze code and provide helpful, accurate responses.",
+            content: "You are a helpful coding assistant. Analyze code and provide concise, accurate responses."
           },
           {
             role: "user",
-            content: prompt,
-          },
+            content: prompt
+          }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 1000
       });
 
       const response = completion.choices[0]?.message?.content;
       if (!response) {
-        throw new Error("No response from AI");
+        throw new Error("No response received");
       }
 
       res.json({ response });
     } catch (error: any) {
-      console.error("AI analysis failed:", error);
-      let errorMessage = "Failed to analyze code";
-
-      if (error.response?.status === 401) {
-        errorMessage = "Invalid or expired API key";
-      } else if (error.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      res.status(500).json({ 
-        error: "AI Analysis Error",
-        message: errorMessage
+      console.error("AI Analysis failed:", error);
+      res.status(500).json({
+        error: "Failed to analyze code",
+        details: error.message
       });
     }
   });

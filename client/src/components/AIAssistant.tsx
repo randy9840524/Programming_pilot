@@ -13,7 +13,6 @@ interface AIAssistantProps {
 interface Message {
   role: "user" | "assistant";
   content: string;
-  error?: boolean;
 }
 
 export default function AIAssistant({ file }: AIAssistantProps) {
@@ -22,41 +21,35 @@ export default function AIAssistant({ file }: AIAssistantProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const sendMessage = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+
     if (!input.trim() || !file) {
       toast({
         title: "Error",
-        description: file ? "Please enter a message" : "Please select a file first",
+        description: file ? "Please enter a question" : "Please select a file first",
         variant: "destructive",
       });
       return;
     }
 
-    const userMessage = input.trim();
+    const question = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setMessages(prev => [...prev, { role: "user", content: question }]);
     setIsLoading(true);
 
     try {
-      const response = await analyzeCode(file, userMessage);
-      if (response.error) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: response.error, error: true },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: response.content },
-        ]);
-      }
+      const response = await analyzeCode(file, question);
+      setMessages(prev => [...prev, { role: "assistant", content: response }]);
     } catch (error: any) {
-      console.error("Failed to get AI response:", error);
       toast({
         title: "Error",
-        description: "Failed to get AI response",
+        description: error.message || "Failed to get AI response",
         variant: "destructive",
       });
+      console.error("AI request failed:", error);
     } finally {
       setIsLoading(false);
     }
@@ -83,9 +76,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === "assistant"
-                    ? message.error
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-secondary text-secondary-foreground"
+                    ? "bg-secondary text-secondary-foreground"
                     : "bg-primary text-primary-foreground"
                 }`}
               >
@@ -110,7 +101,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
+      <form onSubmit={handleSubmit} className="border-t p-4">
         <div className="flex gap-2">
           <Textarea
             value={input}
@@ -118,9 +109,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (!isLoading && input.trim()) {
-                  void sendMessage();
-                }
+                void handleSubmit();
               }
             }}
             placeholder={
@@ -132,9 +121,9 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             disabled={isLoading || !file}
           />
           <Button
+            type="submit"
             size="icon"
             className="self-end"
-            onClick={() => sendMessage()}
             disabled={isLoading || !input.trim() || !file}
           >
             {isLoading ? (
@@ -147,7 +136,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         <p className="text-xs text-muted-foreground mt-2">
           Press Enter to send, Shift + Enter for new line
         </p>
-      </div>
+      </form>
     </div>
   );
 }
