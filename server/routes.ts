@@ -163,7 +163,7 @@ Remember:
         });
       }
 
-      // Create a basic HTML preview
+      // Create a basic HTML preview with React and Tailwind
       const preview = `
         <!DOCTYPE html>
         <html>
@@ -171,16 +171,33 @@ Remember:
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            body {
+              margin: 0;
+              padding: 1rem;
+              min-height: 100vh;
+              background: transparent;
+            }
+            #root {
+              height: 100%;
+            }
+          </style>
         </head>
         <body>
           <div id="root"></div>
           <script type="module">
-            import * as React from 'https://esm.sh/react@18.2.0';
-            import * as ReactDOM from 'https://esm.sh/react-dom@18.2.0';
+            import React from 'https://esm.sh/react@18.2.0';
+            import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
+            import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
 
             try {
-              const App = (${code});
-              ReactDOM.render(React.createElement(App), document.getElementById('root'));
+              const code = \`${code}\`;
+              const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+              const AsyncComponent = new AsyncFunction('React', code);
+              const Component = await AsyncComponent(React);
+
+              const root = createRoot(document.getElementById('root'));
+              root.render(React.createElement(Component.default || Component));
             } catch (error) {
               document.getElementById('root').innerHTML = 
                 '<div style="color: red; padding: 20px;">' + error.message + '</div>';

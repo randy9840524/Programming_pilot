@@ -16,12 +16,21 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
 
     const updatePreview = async () => {
       try {
+        // Convert the code to a self-contained React component
+        const componentCode = `
+          ${code}
+          // Make sure the component is the default export
+          export default function PreviewComponent() {
+            return ${code};
+          }
+        `;
+
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code: componentCode }),
         });
 
         if (!response.ok) {
@@ -71,7 +80,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0"
+      className="w-full h-full border-0 bg-white rounded-lg"
       sandbox="allow-scripts"
       title="Live Preview"
     />
