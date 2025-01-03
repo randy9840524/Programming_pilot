@@ -15,17 +15,6 @@ interface EditorProps {
   onAIToggle: () => void;
 }
 
-interface CollaborationMessage {
-  type: 'cursor' | 'selection' | 'edit' | 'user_joined' | 'user_left';
-  userId: string;
-  file: string;
-  data: {
-    position?: { line: number; column: number };
-    selection?: { start: { line: number; column: number }; end: { line: number; column: number } };
-    content?: string;
-  };
-}
-
 export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const editorRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -265,8 +254,8 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         </Button>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-4">
-        <div className="relative">
+      <div className="flex-1 grid grid-cols-3 gap-4">
+        <div className="col-span-2 relative">
           <Editor
             height="100%"
             defaultLanguage="plaintext"
