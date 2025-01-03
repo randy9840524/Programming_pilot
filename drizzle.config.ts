@@ -4,7 +4,7 @@ import { config } from "dotenv";
 config();
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+  throw new Error("DATABASE_URL not found, ensure the database is provisioned");
 }
 
 export default defineConfig({
