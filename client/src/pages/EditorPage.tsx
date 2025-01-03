@@ -56,7 +56,7 @@ export default function EditorPage() {
         <ResizablePanelGroup direction="horizontal">
           {showSidebar && (
             <>
-              <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+              <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
                 <ScrollArea className="h-full">
                   <FileExplorer
                     onFileSelect={setSelectedFile}
@@ -68,7 +68,7 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 60 : 80}>
+          <ResizablePanel defaultSize={showAI ? 50 : 85}>
             <Editor
               file={selectedFile}
               onAIToggle={() => setShowAI(!showAI)}
@@ -78,8 +78,8 @@ export default function EditorPage() {
           {showAI && (
             <>
               <ResizableHandle />
-              <ResizablePanel defaultSize={20} minSize={20}>
-                <AIAssistant file={selectedFile} />
+              <ResizablePanel defaultSize={35} minSize={25}>
+                <AIAssistant />
               </ResizablePanel>
             </>
           )}
