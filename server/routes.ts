@@ -1,8 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { db } from "@db";
-import { eq } from "drizzle-orm";
-import { files } from "@db/schema";
 import OpenAI from "openai";
 
 // Initialize OpenAI with API key
@@ -13,52 +10,42 @@ const openai = new OpenAI({
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
 
-  // Health check endpoint
+  // Simple health check endpoint
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
   // AI Analysis endpoint
   app.post("/api/analyze", async (req, res) => {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ message: "OpenAI API key not configured" });
-    }
-
     try {
-      const { prompt, filePath } = req.body;
+      const { prompt } = req.body;
+      console.log("Received analyze request:", { prompt });
+
+      if (!process.env.OPENAI_API_KEY) {
+        console.error("OpenAI API key not configured");
+        return res.status(500).json({ 
+          message: "OpenAI API key not configured" 
+        });
+      }
 
       if (!prompt) {
-        return res.status(400).json({ message: "Missing prompt" });
+        console.error("Missing prompt");
+        return res.status(400).json({ 
+          message: "Please provide a question or message" 
+        });
       }
 
-      let fileContent = "";
-      if (filePath) {
-        // Get file content if filePath is provided
-        const [file] = await db
-          .select()
-          .from(files)
-          .where(eq(files.path, filePath))
-          .limit(1);
-
-        if (!file) {
-          return res.status(404).json({ message: "File not found" });
-        }
-        fileContent = file.content;
-      }
-
-      // Send to OpenAI
+      console.log("Sending request to OpenAI");
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "You are a helpful assistant analyzing code and providing clear, concise responses.",
+            content: "You are a helpful assistant. Provide clear and concise responses.",
           },
           {
             role: "user",
-            content: filePath 
-              ? `${prompt}\n\nHere's the code:\n\`\`\`\n${fileContent}\n\`\`\``
-              : prompt,
+            content: prompt,
           },
         ],
         temperature: 0.7,
@@ -67,44 +54,19 @@ export function registerRoutes(app: Express): Server {
 
       const response = completion.choices[0]?.message?.content;
       if (!response) {
-        throw new Error("No response received");
+        console.error("No response from OpenAI");
+        throw new Error("Failed to get response from AI");
       }
 
+      console.log("Successfully got response from OpenAI");
       res.json({ response });
     } catch (error: any) {
       console.error("AI Analysis failed:", error);
       res.status(500).json({ 
-        message: error.message || "Failed to analyze code" 
+        message: error.message || "Failed to get AI response" 
       });
     }
   });
 
-  // Get file content
-  app.get("/api/files/:path", async (req, res) => {
-    try {
-      const filePath = decodeURIComponent(req.params.path);
-      const [file] = await db
-        .select()
-        .from(files)
-        .where(eq(files.path, filePath))
-        .limit(1);
-
-      if (!file) {
-        return res.status(404).send("File not found");
-      }
-
-      res.json(file);
-    } catch (error) {
-      console.error("Failed to fetch file:", error);
-      res.status(500).send("Failed to fetch file");
-    }
-  });
-
   return httpServer;
-}
-
-interface FileNode {
-  name: string;
-  type: "file" | "folder";
-  children?: FileNode[];
 }

@@ -15,24 +15,22 @@ export default function AIAssistant({ file }: AIAssistantProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const message = input.trim();
 
-    if (!input.trim() || !file) {
+    if (!message) {
       toast({
         title: "Error",
-        description: file ? "Please enter a question" : "Please select a file first",
+        description: "Please enter a message",
         variant: "destructive"
       });
       return;
     }
 
     setIsLoading(true);
-    const userMessage = input.trim();
     setInput("");
-    setMessages(prev => [...prev, `You: ${userMessage}`]);
+    setMessages(prev => [...prev, `You: ${message}`]);
 
     try {
       const response = await fetch('/api/analyze', {
@@ -40,42 +38,37 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          prompt: userMessage,
-          filePath: file
-        }),
-        credentials: 'include'
+        body: JSON.stringify({ prompt: message }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to get AI response');
-      }
-
       const data = await response.json();
-      if (!data.response) {
-        throw new Error('Invalid response from AI');
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Request failed');
       }
 
       setMessages(prev => [...prev, `AI: ${data.response}`]);
     } catch (error: any) {
-      console.error("Failed to get AI response:", error);
+      const errorMessage = error.message || "Something went wrong";
+      console.error("Chat error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to get AI response",
+        description: errorMessage,
         variant: "destructive"
       });
-      setMessages(prev => [...prev, `Error: ${error.message || "Failed to get AI response"}`]);
+      setMessages(prev => [...prev, `Error: ${errorMessage}`]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
       <div className="border-b p-4">
         <h2 className="text-xl font-semibold">AI Assistant</h2>
-        <p className="text-sm text-muted-foreground">Ask questions about your code</p>
+        <p className="text-sm text-muted-foreground">
+          Ask me anything
+        </p>
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -83,7 +76,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
           {messages.map((msg, i) => (
             <div key={i} className="text-sm">
               {msg.startsWith("Error:") ? (
-                <p className="text-destructive">{msg}</p>
+                <p className="text-destructive font-medium">{msg}</p>
               ) : (
                 <p className="whitespace-pre-wrap">{msg}</p>
               )}
@@ -91,7 +84,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
           ))}
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground">
-              <p>Select a file and start asking questions</p>
+              <p>How can I help you today?</p>
             </div>
           )}
         </div>
@@ -105,17 +98,18 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void handleSubmit();
+                if (!isLoading && input.trim()) {
+                  void handleSubmit(e);
+                }
               }
             }}
-            placeholder={file ? "Ask a question..." : "Select a file first"}
-            className="min-h-[80px]"
-            disabled={isLoading || !file}
+            placeholder="Type your message..."
+            className="min-h-[80px] resize-none"
           />
-          <Button 
+          <Button
             type="submit"
             className="self-end"
-            disabled={isLoading || !input.trim() || !file}
+            disabled={isLoading || !input.trim()}
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -124,6 +118,9 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             )}
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Press Enter to send, Shift + Enter for new line
+        </p>
       </form>
     </div>
   );
