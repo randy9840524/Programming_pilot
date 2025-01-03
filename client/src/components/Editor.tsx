@@ -145,15 +145,16 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     return (
       <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-2">
+          {/* File Actions */}
           <div className="flex items-center gap-1 mr-4">
             <Button
               variant="outline"
               size="sm"
               onClick={handleSave}
-              className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+              className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
             >
               <Save className="h-4 w-4" />
-              Save Changes
+              Save
             </Button>
 
             <Button
@@ -168,10 +169,11 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
               ) : (
                 <Play className="h-4 w-4" />
               )}
-              {isBuilding ? "Building..." : "Run & Preview"}
+              {isBuilding ? "Building..." : "Run"}
             </Button>
           </div>
 
+          {/* View Controls */}
           <div className="flex items-center gap-1 border-l pl-4">
             <Button 
               variant="ghost"
@@ -183,7 +185,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
               )}
             >
               <Code2 className="h-4 w-4 mr-1" />
-              Code Editor
+              Editor
             </Button>
             <Button 
               variant="ghost"
@@ -195,7 +197,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
               )}
             >
               <Split className="h-4 w-4 mr-1" />
-              Split View
+              Split
             </Button>
             <Button 
               variant="ghost"
@@ -207,11 +209,12 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
               )}
             >
               <Eye className="h-4 w-4 mr-1" />
-              Live Preview
+              Preview
             </Button>
           </div>
         </div>
 
+        {/* Right Side Controls */}
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -220,11 +223,12 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
             className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700"
           >
             <Bot className="h-4 w-4" />
-            AI Assistant
+            AI Help
           </Button>
 
+          {/* Window Controls */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setIsFullscreen(!isFullscreen)}
             className="hover:bg-slate-100 dark:hover:bg-slate-800"
