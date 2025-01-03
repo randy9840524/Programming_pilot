@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface LivePreviewProps {
   code: string;
@@ -11,45 +10,40 @@ interface LivePreviewProps {
 export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const generatePreview = async () => {
-    if (!code) return;
-
-    setIsRefreshing(true);
-    try {
-      const response = await fetch('/api/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const data = await response.json();
-      setPreview(data.preview);
-      setError(null);
-    } catch (err: any) {
-      console.error('Preview generation error:', err);
-      setError(err.message || 'Failed to generate preview');
-      setPreview(null);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
 
   useEffect(() => {
+    if (!code) return;
+
+    const generatePreview = async () => {
+      try {
+        const response = await fetch('/api/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const data = await response.json();
+        setPreview(data.preview);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message);
+        setPreview(null);
+      }
+    };
+
     const timeoutId = setTimeout(generatePreview, 500);
     return () => clearTimeout(timeoutId);
   }, [code]);
 
   if (isBuilding) {
     return (
-      <div className="h-full flex items-center justify-center bg-background/50">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-sm text-muted-foreground">Building preview...</p>
         </div>
       </div>
@@ -58,18 +52,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
 
   if (error) {
     return (
-      <Card className="h-full p-6 flex flex-col items-center justify-center border-destructive">
-        <p className="text-sm text-destructive whitespace-pre-wrap mb-4">{error}</p>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={generatePreview}
-          disabled={isRefreshing}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Try Again
-        </Button>
+      <Card className="h-full p-4 flex items-center justify-center border-destructive">
+        <p className="text-sm text-destructive">{error}</p>
       </Card>
     );
   }
@@ -77,41 +61,17 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   if (!preview) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <p className="text-sm text-muted-foreground">No preview available</p>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={generatePreview}
-            disabled={isRefreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Generate Preview
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">No preview available</p>
       </div>
     );
   }
 
   return (
-    <div className="relative h-full">
-      <iframe
-        srcDoc={preview}
-        className="w-full h-full border-0 rounded-lg bg-white"
-        sandbox="allow-scripts allow-popups allow-same-origin allow-forms"
-        title="Live Preview"
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={generatePreview}
-        disabled={isRefreshing}
-        className="absolute top-2 right-2 flex items-center gap-2"
-      >
-        <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        Refresh
-      </Button>
-    </div>
+    <iframe
+      srcDoc={preview}
+      className="w-full h-full border-0 rounded-lg bg-white"
+      sandbox="allow-scripts allow-popups allow-same-origin"
+      title="Live Preview"
+    />
   );
 }

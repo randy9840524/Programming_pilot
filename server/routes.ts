@@ -4,12 +4,9 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
-import { projects, insertProjectSchema, files, users, insertUserSchema } from "@db/schema";
+import { projects, insertProjectSchema, files } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
-import session from "express-session";
-import createMemoryStore from "memorystore";
 
 const readdir = promisify(fs.readdir);
 const stat = promisify(fs.stat);
@@ -46,116 +43,7 @@ async function getLatestFile(directory: string): Promise<string | null> {
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
 
-  // Session setup
-  const MemoryStore = createMemoryStore(session);
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    store: new MemoryStore({
-      checkPeriod: 86400000 // prune expired entries every 24h
-    }),
-    cookie: { secure: process.env.NODE_ENV === 'production' }
-  }));
-
-  // Login route
-  app.post("/api/login", async (req, res) => {
-    try {
-      const result = insertUserSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
-      }
-
-      const { username, password } = result.data;
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, username))
-        .limit(1);
-
-      if (!user) {
-        return res.status(401).send("Invalid username or password");
-      }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).send("Invalid username or password");
-      }
-
-      // @ts-ignore
-      req.session.user = { id: user.id, username: user.username };
-      res.json({ message: "Login successful" });
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).send("Internal server error");
-    }
-  });
-
-  // Register route
-  app.post("/api/register", async (req, res) => {
-    try {
-      const result = insertUserSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
-      }
-
-      const { username, password } = result.data;
-
-      // Check if user exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, username))
-        .limit(1);
-
-      if (existingUser) {
-        return res.status(400).send("Username already taken");
-      }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Create user
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          username,
-          password: hashedPassword,
-        })
-        .returning();
-
-      // @ts-ignore
-      req.session.user = { id: newUser.id, username: newUser.username };
-      res.json({ message: "Registration successful" });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).send("Internal server error");
-    }
-  });
-
-  // Get current user
-  app.get("/api/user", (req, res) => {
-    // @ts-ignore
-    if (req.session.user) {
-      // @ts-ignore
-      res.json(req.session.user);
-    } else {
-      res.status(401).send("Not authenticated");
-    }
-  });
-
-  // Logout route
-  app.post("/api/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Logout error:", err);
-        return res.status(500).send("Error logging out");
-      }
-      res.json({ message: "Logged out successfully" });
-    });
-  });
-
-  // Get all projects (Corrected to use projects table)
+  // Get all projects
   app.get("/api/projects", async (_req, res) => {
     try {
       const allProjects = await db.select().from(projects);
