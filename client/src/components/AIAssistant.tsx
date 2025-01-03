@@ -42,7 +42,6 @@ export default function AIAssistant({ file }: AIAssistantProps) {
 
     try {
       // First fetch the file content
-      console.log("Fetching file content for:", file);
       const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`, {
         credentials: 'include'
       });
@@ -56,29 +55,27 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         throw new Error("File content is empty");
       }
 
-      // Then send for analysis
-      console.log("Sending for analysis...");
+      // Send for analysis
+      const prompt = `${question}\n\nHere's the code:\n\`\`\`\n${fileData.content}\n\`\`\``;
+
       const analysisResponse = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          code: fileData.content,
-          question: question
-        }),
+        body: JSON.stringify({ prompt }),
         credentials: 'include'
       });
 
-      const responseData = await analysisResponse.json();
+      const data = await analysisResponse.json();
 
       if (!analysisResponse.ok) {
-        throw new Error(responseData.message || responseData.error || "Analysis failed");
+        throw new Error(data.message || data.error || "Analysis failed");
       }
 
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        content: responseData.response 
+        content: data.response 
       }]);
     } catch (error: any) {
       console.error("AI request failed:", error);
@@ -156,7 +153,9 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void handleSubmit();
+                if (!isLoading && input.trim()) {
+                  void handleSubmit();
+                }
               }
             }}
             placeholder={

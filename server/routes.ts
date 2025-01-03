@@ -3,23 +3,18 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { setupCollaborativeEditing } from "./collaborative";
 import { db } from "@db";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { files } from "@db/schema";
 import OpenAI from "openai";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
-import { fileTypeFromBuffer } from "file-type";
 import express from "express";
 
 // Initialize OpenAI with API key from environment variable
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null;
-
-if (!openai) {
-  console.error("WARNING: OpenAI API key is not configured. AI features will be disabled.");
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -115,24 +110,25 @@ export function registerRoutes(app: Express): Server {
 
   // AI Analysis endpoint
   app.post("/api/analyze", async (req, res) => {
-    if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
         error: "Configuration Error",
-        message: "OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable."
+        message: "OpenAI API key is not configured"
       });
     }
 
     try {
-      const { code, question } = req.body;
+      const { prompt } = req.body;
 
-      if (!code || !question) {
-        return res.status(400).json({ 
-          error: "Missing Parameters", 
-          message: "Both code and question are required" 
+      if (!prompt) {
+        return res.status(400).json({
+          error: "Missing Parameters",
+          message: "Prompt is required"
         });
       }
 
-      console.log("Sending request to OpenAI...");
+      console.log("Sending request to OpenAI with prompt:", prompt);
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
@@ -142,7 +138,7 @@ export function registerRoutes(app: Express): Server {
           },
           {
             role: "user",
-            content: `${question}\n\nHere's the code:\n\`\`\`\n${code}\n\`\`\``
+            content: prompt
           }
         ],
         temperature: 0.7,
@@ -161,7 +157,7 @@ export function registerRoutes(app: Express): Server {
 
       let errorMessage = "Failed to analyze code";
       if (error.response?.status === 401) {
-        errorMessage = "Invalid API key. Please check your OpenAI API key configuration.";
+        errorMessage = "Invalid API key configuration";
       } else if (error.response?.data?.error?.message) {
         errorMessage = error.response.data.error.message;
       } else if (error.message) {
