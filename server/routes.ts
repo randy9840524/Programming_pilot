@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
 
 // Initialize OpenAI with API key
 const openai = new OpenAI({
@@ -31,17 +33,18 @@ export function registerRoutes(app: Express): Server {
       if (!prompt) {
         console.error("Missing prompt");
         return res.status(400).json({ 
-          message: "Please provide a development request or question" 
+          message: "Please provide a development request" 
         });
       }
 
+      // Get the image file path from the prompt if it mentions an attachment
+      const imagePath = prompt.includes("attached") ? path.join(process.cwd(), "attached_assets", "image_1735913367425.png") : null;
+
       console.log("Sending request to OpenAI");
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert software development assistant specializing in building web applications.
+      const messages = [
+        {
+          role: "system",
+          content: `You are an expert software development assistant specializing in building web applications.
 You have access to a powerful IDE environment and can help users build and modify their applications.
 
 When users request to build or modify applications:
@@ -61,14 +64,29 @@ Remember:
 - Keep responses focused on practical implementation
 - Provide working code that fits the existing React/TypeScript stack
 - Be specific and detailed in your implementation guidance`,
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+        },
+        {
+          role: "user",
+          content: imagePath ? [
+            {
+              type: "text",
+              text: prompt
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/png;base64,${fs.readFileSync(imagePath).toString('base64')}`
+              }
+            }
+          ] : prompt,
+        },
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4-vision-preview",
+        messages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: 3000,
       });
 
       const response = completion.choices[0]?.message?.content;
