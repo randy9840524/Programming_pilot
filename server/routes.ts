@@ -3,11 +3,39 @@ import { createServer, type Server } from "http";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
+import { promisify } from "util";
+
+const readdir = promisify(fs.readdir);
+const stat = promisify(fs.stat);
 
 // Initialize OpenAI with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
+
+async function getLatestFile(directory: string): Promise<string | null> {
+  try {
+    const files = await readdir(directory);
+    let latestFile: string | null = null;
+    let latestTime = 0;
+
+    for (const file of files) {
+      if (file.endsWith('.png')) {
+        const filePath = path.join(directory, file);
+        const stats = await stat(filePath);
+        if (stats.mtimeMs > latestTime) {
+          latestTime = stats.mtimeMs;
+          latestFile = filePath;
+        }
+      }
+    }
+
+    return latestFile;
+  } catch (error) {
+    console.error('Error reading directory:', error);
+    return null;
+  }
+}
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
@@ -37,14 +65,21 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Get the image file path from the prompt if it mentions an attachment
-      const imagePath = prompt.includes("attached") ? path.join(process.cwd(), "attached_assets", "image_1735913367425.png") : null;
+      let messages;
+      const assetsDir = path.join(process.cwd(), "attached_assets");
 
-      console.log("Sending request to OpenAI");
-      const messages = [
-        {
-          role: "system",
-          content: `You are an expert software development assistant specializing in building web applications.
+      // Check if there's a recent image upload and the prompt mentions attachments
+      if (prompt.toLowerCase().includes("attach")) {
+        const latestImage = await getLatestFile(assetsDir);
+        console.log("Latest image found:", latestImage);
+
+        if (latestImage) {
+          try {
+            const imageBuffer = await fs.promises.readFile(latestImage);
+            messages = [
+              {
+                role: "system",
+                content: `You are an expert software development assistant specializing in building web applications.
 You have access to a powerful IDE environment and can help users build and modify their applications.
 
 When users request to build or modify applications:
@@ -64,24 +99,35 @@ Remember:
 - Keep responses focused on practical implementation
 - Provide working code that fits the existing React/TypeScript stack
 - Be specific and detailed in your implementation guidance`,
-        },
-        {
-          role: "user",
-          content: imagePath ? [
-            {
-              type: "text",
-              text: prompt
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/png;base64,${fs.readFileSync(imagePath).toString('base64')}`
-              }
-            }
-          ] : prompt,
-        },
-      ];
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: prompt
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:image/png;base64,${imageBuffer.toString('base64')}`
+                    }
+                  }
+                ],
+              },
+            ];
+          } catch (error) {
+            console.error("Error reading image file:", error);
+            messages = [{ role: "user", content: prompt }];
+          }
+        } else {
+          messages = [{ role: "user", content: prompt }];
+        }
+      } else {
+        messages = [{ role: "user", content: prompt }];
+      }
 
+      console.log("Sending request to OpenAI");
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
