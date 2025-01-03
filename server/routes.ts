@@ -152,5 +152,85 @@ Remember:
     }
   });
 
+  // Preview endpoint
+  app.post("/api/preview", async (req, res) => {
+    try {
+      const { code } = req.body;
+
+      if (!code) {
+        return res.status(400).json({ 
+          message: "No code provided" 
+        });
+      }
+
+      // Create a basic HTML preview
+      const preview = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body>
+          <div id="root"></div>
+          <script type="module">
+            import * as React from 'https://esm.sh/react@18.2.0';
+            import * as ReactDOM from 'https://esm.sh/react-dom@18.2.0';
+
+            try {
+              const App = (${code});
+              ReactDOM.render(React.createElement(App), document.getElementById('root'));
+            } catch (error) {
+              document.getElementById('root').innerHTML = 
+                '<div style="color: red; padding: 20px;">' + error.message + '</div>';
+            }
+          </script>
+        </body>
+        </html>
+      `;
+
+      res.json({ preview });
+    } catch (error) {
+      console.error("Preview generation failed:", error);
+      res.status(500).json({ 
+        message: "Failed to generate preview" 
+      });
+    }
+  });
+
+  // Build status endpoint
+  app.get("/api/build/status", (req, res) => {
+    res.json({
+      status: "complete",
+      logs: ["Build completed successfully"],
+    });
+  });
+
+  // Build endpoint
+  app.post("/api/build", async (req, res) => {
+    try {
+      const { content, file } = req.body;
+
+      if (!content || !file) {
+        return res.status(400).json({ 
+          message: "Missing content or file path" 
+        });
+      }
+
+      // Here you would typically trigger your build process
+      // For now, we'll just simulate a successful build
+      res.json({ 
+        message: "Build started",
+        buildId: Date.now().toString()
+      });
+    } catch (error) {
+      console.error("Build failed:", error);
+      res.status(500).json({ 
+        message: "Failed to start build" 
+      });
+    }
+  });
+
   return httpServer;
 }
