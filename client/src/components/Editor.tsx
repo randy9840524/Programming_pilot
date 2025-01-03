@@ -5,10 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Save, Play, Code2, Eye, RefreshCcw, Download, Upload, 
   Copy, Settings2, FileText, RotateCcw, Share2, Terminal,
-  Laptop, GitBranch, Database, Lock, 
+  Laptop, GitBranch, Database, Lock, Bot, Palette, PanelRight,
+  Settings, Maximize2, Split, Minimize2,
+  Split, ChevronDown, ChevronRight, XCircle, Plus, Search, Trash2, 
+  Code
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LivePreview from "./LivePreview";
+import { cn } from "@/lib/utils";
 
 interface EditorProps {
   file: string | null;
@@ -23,17 +27,25 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildLog, setBuildLog] = useState<string[]>([]);
   const [editorValue, setEditorValue] = useState<string>("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<'split'|'editor'|'preview'>('editor');
 
   useEffect(() => {
     if (file && editorRef.current) {
-      // Load file content when file changes
       fetch(`/api/files/${encodeURIComponent(file)}`)
         .then(res => res.text())
         .then(content => {
           editorRef.current.setValue(content);
           setEditorValue(content);
         })
-        .catch(console.error);
+        .catch(err => {
+          console.error("Failed to load file:", err);
+          toast({
+            title: "Error",
+            description: "Failed to load file content",
+            variant: "destructive",
+          });
+        });
     }
   }, [file]);
 
@@ -69,6 +81,8 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     const content = editorRef.current.getValue();
 
     try {
+      await handleSave();
+
       const response = await fetch('/api/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,13 +91,12 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
       if (!response.ok) throw new Error(await response.text());
 
-      setActiveTab("preview");
+      setViewMode('preview');
       toast({
         title: "Build Started",
-        description: "Your changes are being built...",
+        description: "Building and previewing changes...",
       });
 
-      // Poll build status
       const pollStatus = setInterval(async () => {
         const statusRes = await fetch('/api/build/status');
         const status = await statusRes.json();
@@ -92,6 +105,10 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           clearInterval(pollStatus);
           setIsBuilding(false);
           setBuildLog(status.logs || []);
+          toast({
+            title: "Build Complete",
+            description: "Your changes are now live",
+          });
         }
       }, 2000);
 
@@ -99,7 +116,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
       console.error("Build failed:", error);
       toast({
         title: "Error",
-        description: "Failed to start build",
+        description: "Failed to build: " + (error instanceof Error ? error.message : "Unknown error"),
         variant: "destructive",
       });
       setIsBuilding(false);
@@ -124,119 +141,129 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     );
   }
 
-  return (
-    <div className="h-full flex flex-col">
-      <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-2">
-          {/* File Actions */}
-          <div className="flex items-center gap-2 mr-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              className="flex items-center gap-2"
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </Button>
-
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleBuild}
-              disabled={isBuilding}
-              className="flex items-center gap-2"
-            >
-              {isBuilding ? (
-                <RefreshCcw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              {isBuilding ? "Building..." : "Run"}
-            </Button>
-          </div>
-
-          {/* Development Tools */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              Console
-            </Button>
-
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Database
-            </Button>
-
-            <Button variant="ghost" size="sm" className="flex items-center gap-2">
-              <GitBranch className="h-4 w-4" />
-              Git
-            </Button>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="editor" className="flex items-center gap-2">
-              <Code2 className="h-4 w-4" />
-              Editor
-            </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Preview
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center gap-2">
+  const renderToolbar = () => (
+    <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 mr-4">
           <Button
             variant="ghost"
             size="sm"
-            className="flex items-center gap-2"
+            onClick={handleSave}
+            className="flex items-center gap-1"
           >
-            <Share2 className="h-4 w-4" />
-            Share
+            <Save className="h-4 w-4" />
+            Save
           </Button>
 
           <Button
-            variant="outline"
+            variant={isBuilding ? "outline" : "default"}
             size="sm"
-            onClick={onAIToggle}
-            className="flex items-center gap-2"
+            onClick={handleBuild}
+            disabled={isBuilding}
+            className="flex items-center gap-1"
           >
-            <FileText className="h-4 w-4" />
-            AI Assistant
+            {isBuilding ? (
+              <RefreshCcw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {isBuilding ? "Building..." : "Build & Run"}
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-1 border-l pl-4">
+          <Button 
+            variant={viewMode === 'editor' ? 'secondary' : 'ghost'} 
+            size="sm"
+            onClick={() => setViewMode('editor')}
+          >
+            <Code className="h-4 w-4 mr-1" />
+            Editor
+          </Button>
+          <Button 
+            variant={viewMode === 'split' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('split')}
+          >
+            <Split className="h-4 w-4 mr-1" />
+            Split View
+          </Button>
+          <Button 
+            variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('preview')}
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            Preview
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-4 p-4">
-        <TabsContent value="editor" className="mt-0 col-span-2 lg:col-span-1 h-full">
-          <Editor
-            height="100%"
-            defaultLanguage="typescript"
-            theme="vs-dark"
-            loading={<div className="p-4">Loading editor...</div>}
-            onMount={handleEditorDidMount}
-            onChange={handleEditorChange}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: "on",
-              roundedSelection: false,
-              scrollBeyondLastLine: false,
-              padding: { top: 16 },
-              automaticLayout: true,
-            }}
-          />
-        </TabsContent>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAIToggle}
+          className="flex items-center gap-1"
+        >
+          <Bot className="h-4 w-4" />
+          AI Assistant
+        </Button>
 
-        <TabsContent value="preview" className="mt-0 col-span-2 lg:col-span-1 h-full">
-          <LivePreview 
-            code={editorValue} 
-            isBuilding={isBuilding}
-          />
-        </TabsContent>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsFullscreen(!isFullscreen)}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </Button>
+
+        <Button variant="ghost" size="icon">
+          <Settings className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`h-full flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
+      {renderToolbar()}
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
+        {(viewMode === 'editor' || viewMode === 'split') && (
+          <div className={viewMode === 'split' ? 'col-span-1' : 'col-span-1 lg:col-span-2'}>
+            <Editor
+              height="100%"
+              defaultLanguage="typescript"
+              theme="vs-dark"
+              loading={<div className="p-4">Loading editor...</div>}
+              onMount={handleEditorDidMount}
+              onChange={handleEditorChange}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: "on",
+                roundedSelection: false,
+                scrollBeyondLastLine: false,
+                padding: { top: 16 },
+                automaticLayout: true,
+              }}
+            />
+          </div>
+        )}
+
+        {(viewMode === 'preview' || viewMode === 'split') && (
+          <div className={viewMode === 'split' ? 'col-span-1' : 'col-span-1 lg:col-span-2'}>
+            <LivePreview 
+              code={editorValue} 
+              isBuilding={isBuilding}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
