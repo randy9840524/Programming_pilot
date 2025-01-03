@@ -59,7 +59,6 @@ export default function CommandPalette() {
       }
 
       const data = await response.json();
-
       if (!data.response) {
         throw new Error('Invalid response from AI');
       }
@@ -82,10 +81,13 @@ export default function CommandPalette() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Separate keyboard event handler
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      void handleAskAI();
+      if (!isLoading && query.trim()) {
+        await handleAskAI();
+      }
     }
   };
 
@@ -118,11 +120,12 @@ export default function CommandPalette() {
             aria-labelledby="command-dialog-title"
             aria-describedby="command-dialog-description"
             className="flex-1"
+            autoFocus
           />
           <Button 
             size="sm"
             className={`shrink-0 ${isLoading ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'} text-white`}
-            onClick={() => void handleAskAI()}
+            onClick={() => handleAskAI()}
             disabled={isLoading || !query.trim()}
           >
             {isLoading ? (
@@ -136,7 +139,11 @@ export default function CommandPalette() {
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="AI Assistant">
             <CommandItem
-              onSelect={() => void handleAskAI()}
+              onSelect={() => {
+                if (!isLoading && query.trim()) {
+                  void handleAskAI();
+                }
+              }}
               disabled={isLoading || !query.trim()}
             >
               <Send className="mr-2 h-4 w-4" />
