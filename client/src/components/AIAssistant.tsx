@@ -5,11 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface AIAssistantProps {
-  file: string | null;
-}
-
-export default function AIAssistant({ file }: AIAssistantProps) {
+export default function AIAssistant() {
   const [messages, setMessages] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +18,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
     if (!message) {
       toast({
         title: "Error",
-        description: "Please enter a message",
+        description: "Please enter your development request",
         variant: "destructive"
       });
       return;
@@ -41,22 +37,20 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         body: JSON.stringify({ prompt: message }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || 'Request failed');
+        throw new Error(await response.text());
       }
 
+      const data = await response.json();
       setMessages(prev => [...prev, `AI: ${data.response}`]);
     } catch (error: any) {
-      const errorMessage = error.message || "Something went wrong";
-      console.error("Chat error:", error);
+      console.error("Development request failed:", error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to process development request",
         variant: "destructive"
       });
-      setMessages(prev => [...prev, `Error: ${errorMessage}`]);
+      setMessages(prev => [...prev, `Error: ${error.message || "Failed to process development request"}`]);
     } finally {
       setIsLoading(false);
     }
@@ -65,9 +59,9 @@ export default function AIAssistant({ file }: AIAssistantProps) {
   return (
     <div className="h-full flex flex-col bg-background border-l">
       <div className="border-b p-4">
-        <h2 className="text-xl font-semibold">AI Assistant</h2>
+        <h2 className="text-xl font-semibold">Development Assistant</h2>
         <p className="text-sm text-muted-foreground">
-          Ask me anything
+          I can help you build and modify your application
         </p>
       </div>
 
@@ -84,7 +78,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
           ))}
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground">
-              <p>How can I help you today?</p>
+              <p>Describe what you want to build or modify in your application</p>
             </div>
           )}
         </div>
@@ -103,7 +97,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
                 }
               }
             }}
-            placeholder="Type your message..."
+            placeholder="Describe your development request..."
             className="min-h-[80px] resize-none"
           />
           <Button
