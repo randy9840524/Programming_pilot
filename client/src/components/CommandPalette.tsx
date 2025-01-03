@@ -8,7 +8,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useEffect, useState } from "react";
-import { Search, Plus, Save, FileText, FolderPlus, Upload, Send } from "lucide-react";
+import { Search, Plus, Save, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,20 +30,6 @@ export default function CommandPalette() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  const runCommand = async (command: () => void | Promise<void>) => {
-    setOpen(false);
-    try {
-      await command();
-    } catch (error) {
-      console.error("Failed to run command:", error);
-      toast({
-        title: "Error",
-        description: "Failed to execute command",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleAskAI = async () => {
     if (!query.trim()) {
       toast({
@@ -53,6 +40,7 @@ export default function CommandPalette() {
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -60,13 +48,12 @@ export default function CommandPalette() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: "",
           prompt: query
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        throw new Error(await response.text());
       }
 
       const data = await response.json();
@@ -74,12 +61,23 @@ export default function CommandPalette() {
         title: "AI Response",
         description: data.response,
       });
-    } catch (error) {
+      setQuery(""); // Clear input after successful response
+    } catch (error: any) {
+      console.error("Failed to get AI response:", error);
       toast({
         title: "Error",
-        description: "Failed to get AI response",
+        description: error.message || "Failed to get AI response",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAskAI();
     }
   };
 
@@ -108,6 +106,7 @@ export default function CommandPalette() {
             placeholder="Ask AI Assistant..." 
             value={query}
             onValueChange={setQuery}
+            onKeyPress={handleKeyPress}
             aria-labelledby="command-dialog-title"
             aria-describedby="command-dialog-description"
             className="flex-1"
@@ -115,35 +114,47 @@ export default function CommandPalette() {
           <Button 
             variant="destructive"
             size="sm"
-            onClick={() => runCommand(handleAskAI)}
+            onClick={handleAskAI}
+            disabled={isLoading}
             className="shrink-0"
           >
-            <Send className="h-4 w-4" />
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="File Operations">
+          <CommandGroup heading="AI Assistant">
             <CommandItem
-              onSelect={() => runCommand(() => console.log("New File"))}
+              onSelect={handleAskAI}
+              disabled={isLoading}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Ask AI Assistant
+            </CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Actions">
+            <CommandItem
+              onSelect={() => {
+                setOpen(false);
+                console.log("New File");
+              }}
             >
               <Plus className="mr-2 h-4 w-4" />
               New File
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => console.log("Save"))}
+              onSelect={() => {
+                setOpen(false);
+                console.log("Save");
+              }}
             >
               <Save className="mr-2 h-4 w-4" />
               Save
-            </CommandItem>
-          </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup heading="AI Assistant">
-            <CommandItem
-              onSelect={() => runCommand(handleAskAI)}
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Ask AI Assistant
             </CommandItem>
           </CommandGroup>
         </CommandList>
