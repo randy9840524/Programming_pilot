@@ -13,6 +13,7 @@ interface AIAssistantProps {
 interface Message {
   role: "user" | "assistant";
   content: string;
+  error?: boolean;
 }
 
 export default function AIAssistant({ file }: AIAssistantProps) {
@@ -22,7 +23,14 @@ export default function AIAssistant({ file }: AIAssistantProps) {
   const { toast } = useToast();
 
   const sendMessage = async () => {
-    if (!input.trim() || !file) return;
+    if (!input.trim() || !file) {
+      toast({
+        title: "Error",
+        description: file ? "Please enter a message" : "Please select a file first",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const userMessage = input.trim();
     setInput("");
@@ -31,11 +39,19 @@ export default function AIAssistant({ file }: AIAssistantProps) {
 
     try {
       const response = await analyzeCode(file, userMessage);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: response },
-      ]);
-    } catch (error) {
+      if (response.error) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response.error, error: true },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response.content },
+        ]);
+      }
+    } catch (error: any) {
+      console.error("Failed to get AI response:", error);
       toast({
         title: "Error",
         description: "Failed to get AI response",
@@ -48,15 +64,15 @@ export default function AIAssistant({ file }: AIAssistantProps) {
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
-      <div className="border-b p-6">
-        <h2 className="text-2xl font-semibold mb-2">AI Assistant</h2>
-        <p className="text-muted-foreground">
+      <div className="border-b p-4">
+        <h2 className="text-xl font-semibold mb-2">AI Assistant</h2>
+        <p className="text-sm text-muted-foreground">
           Ask questions about your code and get intelligent responses
         </p>
       </div>
 
-      <ScrollArea className="flex-1 p-6">
-        <div className="space-y-6">
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
           {messages.map((message, i) => (
             <div
               key={i}
@@ -65,13 +81,17 @@ export default function AIAssistant({ file }: AIAssistantProps) {
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-4 ${
+                className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === "assistant"
-                    ? "bg-secondary text-secondary-foreground"
+                    ? message.error
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-secondary text-secondary-foreground"
                     : "bg-primary text-primary-foreground"
                 }`}
               >
-                <div className="whitespace-pre-wrap">{message.content}</div>
+                <pre className="whitespace-pre-wrap break-words text-sm">
+                  {message.content}
+                </pre>
               </div>
             </div>
           ))}
@@ -79,7 +99,7 @@ export default function AIAssistant({ file }: AIAssistantProps) {
             <div className="text-center text-muted-foreground">
               <p className="text-lg mb-2">Welcome to AI Assistant!</p>
               <p>Start by asking a question about your code.</p>
-              <p className="text-sm mt-2">Examples:</p>
+              <p className="text-sm mt-4">Examples:</p>
               <ul className="text-sm mt-1 space-y-1">
                 <li>"What does this code do?"</li>
                 <li>"How can I improve this function?"</li>
@@ -90,31 +110,37 @@ export default function AIAssistant({ file }: AIAssistantProps) {
         </div>
       </ScrollArea>
 
-      <div className="border-t p-6">
-        <div className="flex gap-4">
+      <div className="border-t p-4">
+        <div className="flex gap-2">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage();
+                if (!isLoading && input.trim()) {
+                  void sendMessage();
+                }
               }
             }}
-            placeholder="Ask a question about your code..."
-            className="min-h-[100px] resize-none text-base"
-            disabled={isLoading}
+            placeholder={
+              file
+                ? "Ask a question about your code..."
+                : "Select a file to start chatting"
+            }
+            className="min-h-[80px] resize-none"
+            disabled={isLoading || !file}
           />
           <Button
-            size="lg"
-            className="self-end px-6"
-            onClick={sendMessage}
-            disabled={isLoading || !input.trim()}
+            size="icon"
+            className="self-end"
+            onClick={() => sendMessage()}
+            disabled={isLoading || !input.trim() || !file}
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             )}
           </Button>
         </div>

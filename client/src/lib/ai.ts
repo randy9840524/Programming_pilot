@@ -1,7 +1,12 @@
+interface AIResponse {
+  content: string;
+  error?: string;
+}
+
 export async function analyzeCode(
   file: string,
   question: string
-): Promise<string> {
+): Promise<AIResponse> {
   try {
     // Get file content
     const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`);
@@ -18,7 +23,10 @@ export async function analyzeCode(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ code, prompt: question }),
+      body: JSON.stringify({
+        prompt: `Here is the code I want you to analyze:\n\`\`\`\n${code}\n\`\`\`\n\nQuestion: ${question}`
+      }),
+      credentials: 'include'
     });
 
     if (!analysisResponse.ok) {
@@ -31,9 +39,12 @@ export async function analyzeCode(
       throw new Error("No response from AI");
     }
 
-    return data.response;
+    return { content: data.response };
   } catch (error: any) {
     console.error("AI analysis failed:", error);
-    throw new Error(error.message || "Failed to analyze code");
+    return { 
+      content: "", 
+      error: error.message || "Failed to analyze code" 
+    };
   }
 }

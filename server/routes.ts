@@ -12,7 +12,7 @@ import multer from "multer";
 import { fileTypeFromBuffer } from "file-type";
 import express from "express";
 
-// Initialize OpenAI with API key
+// Initialize OpenAI with API key from environment variable
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -213,7 +213,7 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-  // AI Analysis endpoint (replaced with edited code)
+  // AI Analysis endpoint
   app.post("/api/analyze", async (req, res) => {
     try {
       const { prompt } = req.body;
@@ -225,34 +225,28 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      if (!process.env.OPENAI_API_KEY) {
-        return res.status(500).json({ 
-          error: "Configuration error", 
-          message: "OpenAI API key is not configured" 
-        });
-      }
-
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "You are an expert programmer assistant. Analyze code and provide helpful, accurate responses.",
+            content: "You are an expert programming assistant. Analyze code and provide helpful, accurate responses.",
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        max_tokens: 2000,
         temperature: 0.7,
+        max_tokens: 2000,
       });
 
-      if (!completion.choices[0]?.message?.content) {
-        throw new Error("No response from OpenAI");
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error("No response from AI");
       }
 
-      res.json({ response: completion.choices[0].message.content });
+      res.json({ response });
     } catch (error: any) {
       console.error("AI analysis failed:", error);
       const errorMessage = error.response?.data?.error?.message || error.message || "Failed to analyze code";
