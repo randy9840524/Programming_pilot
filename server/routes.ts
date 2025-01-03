@@ -1,15 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { setupAuth } from "./auth";
 import { setupCollaborativeEditing } from "./collaborative";
-import OpenAI from "openai";
 import { db } from "@db";
+import { and, eq, ilike, or } from "drizzle-orm";
 import { files } from "@db/schema";
-import { eq } from "drizzle-orm";
-import express from "express";
+import OpenAI from "openai";
 import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import { fileTypeFromBuffer } from "file-type";
+import express from "express";
 
 // Initialize OpenAI with API key
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -26,6 +27,9 @@ const upload = multer({
 export function registerRoutes(app: Express): Server {
   // Create HTTP server
   const httpServer = createServer(app);
+
+  // Set up authentication
+  setupAuth(app);
 
   // Set up WebSocket server for collaborative editing
   setupCollaborativeEditing(httpServer);
@@ -329,5 +333,3 @@ async function createWorker(){
         terminate: async () => {}
     }
 }
-
-import { and, or, ilike } from "drizzle-orm";

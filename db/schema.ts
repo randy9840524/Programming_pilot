@@ -1,11 +1,20 @@
 import { pgTable, text, serial, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").unique().notNull(),
+  password: text("password").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
   path: text("path").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // "file" | "folder"
+  type: text("type").notNull(),
   content: text("content"),
   metadata: jsonb("metadata").$type<{
     language?: string;
@@ -34,11 +43,22 @@ export const codeSnippets = pgTable("code_snippets", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// User schemas
+export const insertUserSchema = createInsertSchema(users, {
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+export const selectUserSchema = createSelectSchema(users);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = z.infer<typeof selectUserSchema>;
+
+// File schemas
 export const insertFileSchema = createInsertSchema(files);
 export const selectFileSchema = createSelectSchema(files);
 export type InsertFile = typeof files.$inferInsert;
 export type SelectFile = typeof files.$inferSelect;
 
+// Code snippet schemas
 export const insertSnippetSchema = createInsertSchema(codeSnippets);
 export const selectSnippetSchema = createSelectSchema(codeSnippets);
 export type InsertSnippet = typeof codeSnippets.$inferInsert;

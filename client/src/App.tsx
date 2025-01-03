@@ -1,14 +1,32 @@
 import { Switch, Route } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import HomePage from "./pages/HomePage";
 import EditorPage from "./pages/EditorPage";
 import PaymentPage from "./pages/PaymentPage";
+import AuthPage from "./pages/AuthPage";
+import { useUser } from "@/hooks/use-user";
 
 function App() {
+  const { user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
+  }
+
+  // Show the auth page if user is not logged in and trying to access protected routes
+  if (!user && window.location.pathname !== "/") {
+    return <AuthPage />;
+  }
+
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/login" component={AuthPage} />
       <Route path="/editor" component={EditorPage} />
       <Route path="/payment" component={PaymentPage} />
       <Route component={NotFound} />
