@@ -225,6 +225,13 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ 
+          error: "Configuration Error", 
+          message: "OpenAI API key is not configured properly" 
+        });
+      }
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
@@ -249,7 +256,16 @@ export function registerRoutes(app: Express): Server {
       res.json({ response });
     } catch (error: any) {
       console.error("AI analysis failed:", error);
-      const errorMessage = error.response?.data?.error?.message || error.message || "Failed to analyze code";
+      let errorMessage = "Failed to analyze code";
+
+      if (error.response?.status === 401) {
+        errorMessage = "Invalid or expired API key";
+      } else if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       res.status(500).json({ 
         error: "AI Analysis Error",
         message: errorMessage

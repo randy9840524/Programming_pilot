@@ -8,23 +8,26 @@ export async function analyzeCode(
   question: string
 ): Promise<AIResponse> {
   try {
-    // Get file content
+    // Get file content first
     const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`);
     if (!fileResponse.ok) {
-      throw new Error(`Failed to load file: ${await fileResponse.text()}`);
+      const errorText = await fileResponse.text();
+      throw new Error(`Failed to load file: ${errorText}`);
     }
 
     const fileData = await fileResponse.json();
-    const code = fileData.content;
+    if (!fileData.content) {
+      throw new Error("File content is empty");
+    }
 
-    // Send for analysis
+    // Prepare the code and question for analysis
     const analysisResponse = await fetch('/api/analyze', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: `Here is the code I want you to analyze:\n\`\`\`\n${code}\n\`\`\`\n\nQuestion: ${question}`
+        prompt: `Here is the code I want you to analyze:\n\`\`\`\n${fileData.content}\n\`\`\`\n\nQuestion: ${question}`
       }),
       credentials: 'include'
     });
