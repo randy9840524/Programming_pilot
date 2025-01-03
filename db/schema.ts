@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, jsonb, integer, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,11 +15,8 @@ export const projects = pgTable("projects", {
   name: text("name").notNull(),
   description: text("description"),
   ownerId: integer("owner_id").references(() => users.id),
-  settings: jsonb("settings").$type<{
-    theme?: string;
-    language?: string;
-    framework?: string;
-  }>(),
+  language: text("language"),
+  framework: text("framework"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -27,16 +24,10 @@ export const projects = pgTable("projects", {
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").references(() => projects.id),
-  path: text("path").notNull(),
   name: text("name").notNull(),
-  type: text("type").notNull(),
   content: text("content"),
-  metadata: jsonb("metadata").$type<{
-    language?: string;
-    lastModified?: string;
-    size?: number;
-    mimeType?: string;
-  }>(),
+  type: text("type").notNull(),
+  path: text("path").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -63,6 +54,8 @@ export const codeSnippets = pgTable("code_snippets", {
 export const insertProjectSchema = createInsertSchema(projects, {
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
+  language: z.string().optional(),
+  framework: z.string().optional(),
 });
 export const selectProjectSchema = createSelectSchema(projects);
 export type InsertProject = z.infer<typeof insertProjectSchema>;

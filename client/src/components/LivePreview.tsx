@@ -69,8 +69,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0 rounded-lg"
-      sandbox="allow-scripts allow-popups"
+      className="w-full h-full border-0 rounded-lg bg-white"
+      sandbox="allow-scripts allow-popups allow-same-origin"
       title="Live Preview"
     />
   );

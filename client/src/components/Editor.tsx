@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Editor } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
-import { Brain, Play, Save, Code2, Eye, RefreshCw, Download, Upload, Copy } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
-import DocumentPreview from "./DocumentPreview";
-import FileSync from "./FileSync";
-import LivePreview from "./LivePreview";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Save, Play, Code2, Eye, RefreshCcw, Download, Upload, 
+  Copy, Settings2, FileText, RotateCcw, Share2, Terminal,
+  Laptop, GitBranch, Database, Lock, 
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import LivePreview from "./LivePreview";
 
 interface EditorProps {
   file: string | null;
@@ -18,33 +17,28 @@ interface EditorProps {
 
 export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const editorRef = useRef<any>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [fileData, setFileData] = useState<any>(null);
-  const [collaborators, setCollaborators] = useState(new Set<string>());
+  const [activeTab, setActiveTab] = useState<string>("editor");
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildLog, setBuildLog] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("editor");
-
-  const { data: buildStatus } = useQuery({
-    queryKey: ['/api/build/status'],
-    refetchInterval: 1000,
-    enabled: isBuilding,
-  });
+  const [editorValue, setEditorValue] = useState<string>("");
 
   useEffect(() => {
-    if (buildStatus?.status === 'complete') {
-      setIsBuilding(false);
-      setActiveTab("preview");
+    if (file && editorRef.current) {
+      // Load file content when file changes
+      fetch(`/api/files/${encodeURIComponent(file)}`)
+        .then(res => res.text())
+        .then(content => {
+          editorRef.current.setValue(content);
+          setEditorValue(content);
+        })
+        .catch(console.error);
     }
-    if (buildStatus?.logs) {
-      setBuildLog(buildStatus.logs);
-    }
-  }, [buildStatus]);
+  }, [file]);
 
   const handleSave = async () => {
-    if (!file || !editorRef.current || !fileData?.content) return;
+    if (!file || !editorRef.current) return;
     const content = editorRef.current.getValue();
     try {
       const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
@@ -81,14 +75,26 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         body: JSON.stringify({ content, file }),
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+      if (!response.ok) throw new Error(await response.text());
 
+      setActiveTab("preview");
       toast({
         title: "Build Started",
         description: "Your changes are being built...",
       });
+
+      // Poll build status
+      const pollStatus = setInterval(async () => {
+        const statusRes = await fetch('/api/build/status');
+        const status = await statusRes.json();
+
+        if (status.status === "complete") {
+          clearInterval(pollStatus);
+          setIsBuilding(false);
+          setBuildLog(status.logs || []);
+        }
+      }, 2000);
+
     } catch (error) {
       console.error("Build failed:", error);
       toast({
@@ -100,50 +106,15 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     }
   };
 
+  const handleEditorChange = (value: string | undefined) => {
+    if (value !== undefined) {
+      setEditorValue(value);
+    }
+  };
+
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
   }
-
-  useEffect(() => {
-    if (!file) return;
-
-    setIsLoading(true);
-    fetch(`/api/files/${encodeURIComponent(file)}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to load file: ${res.statusText}`);
-        }
-        const contentType = res.headers.get("content-type");
-        if (contentType?.startsWith("application/json")) {
-          return res.json();
-        }
-        return {
-          path: file,
-          content: null,
-          metadata: { mimeType: contentType },
-        };
-      })
-      .then((data) => {
-        setFileData(data);
-        if (data.content !== null) {
-          editorRef.current?.setValue(data.content || "");
-          const ext = file.split(".").pop() || "";
-          const language = getLanguageFromExt(ext);
-          editorRef.current?.updateOptions({ language });
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to load file:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load file content",
-          variant: "destructive",
-        });
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [file, toast]);
 
   if (!file) {
     return (
@@ -153,59 +124,79 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     );
   }
 
-  if (fileData?.metadata?.mimeType && isPreviewableDocument(fileData.metadata.mimeType)) {
-    return <DocumentPreview file={file} type={fileData.metadata.mimeType} />;
-  }
-
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b p-4 flex items-center justify-between bg-background">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSave}
-            disabled={isLoading}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save</span>
-          </Button>
+      <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center gap-2">
+          {/* File Actions */}
+          <div className="flex items-center gap-2 mr-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
 
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleBuild}
-            disabled={isLoading || isBuilding}
-            className="flex items-center gap-2"
-          >
-            <Play className="h-4 w-4" />
-            <span>{isBuilding ? "Building..." : "Build & Run"}</span>
-            {isBuilding && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-          </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleBuild}
+              disabled={isBuilding}
+              className="flex items-center gap-2"
+            >
+              {isBuilding ? (
+                <RefreshCcw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isBuilding ? "Building..." : "Run"}
+            </Button>
+          </div>
 
-          <div className="border-l h-6 mx-2" />
+          {/* Development Tools */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              Console
+            </Button>
 
-          <Tabs defaultValue="editor" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="editor" className="flex items-center gap-2">
-                <Code2 className="h-4 w-4" />
-                Editor
-              </TabsTrigger>
-              <TabsTrigger value="preview" className="flex items-center gap-2">
-                <Eye className="h-4 w-4" />
-                Preview
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Database
+            </Button>
+
+            <Button variant="ghost" size="sm" className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Git
+            </Button>
+          </div>
         </div>
 
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[400px]">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="editor" className="flex items-center gap-2">
+              <Code2 className="h-4 w-4" />
+              Editor
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Preview
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex items-center gap-2">
-          {collaborators.size > 0 && (
-            <Badge variant="outline">
-              {collaborators.size} collaborator{collaborators.size !== 1 ? 's' : ''}
-            </Badge>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </Button>
 
           <Button
             variant="outline"
@@ -213,62 +204,38 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
             onClick={onAIToggle}
             className="flex items-center gap-2"
           >
-            <Brain className="h-4 w-4" />
+            <FileText className="h-4 w-4" />
             AI Assistant
-            <Badge variant="secondary" className="ml-1">Beta</Badge>
           </Button>
         </div>
       </div>
 
       <div className="flex-1 grid grid-cols-2 gap-4 p-4">
-        <TabsContent value="editor" className="mt-0">
-          <div className="h-full relative rounded-lg overflow-hidden border">
-            <Editor
-              height="100%"
-              defaultLanguage="plaintext"
-              theme="vs-dark"
-              loading={<div className="p-4">Loading editor...</div>}
-              onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: "on",
-                scrollBeyondLastLine: false,
-                roundedSelection: false,
-                padding: { top: 16 },
-                wordWrap: "on",
-                automaticLayout: true,
-                tabSize: 2,
-                insertSpaces: true,
-                detectIndentation: true,
-                smoothScrolling: true,
-                cursorBlinking: "blink",
-                cursorSmoothCaretAnimation: "on",
-                mouseWheelZoom: true,
-              }}
-            />
-          </div>
+        <TabsContent value="editor" className="mt-0 col-span-2 lg:col-span-1 h-full">
+          <Editor
+            height="100%"
+            defaultLanguage="typescript"
+            theme="vs-dark"
+            loading={<div className="p-4">Loading editor...</div>}
+            onMount={handleEditorDidMount}
+            onChange={handleEditorChange}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: "on",
+              roundedSelection: false,
+              scrollBeyondLastLine: false,
+              padding: { top: 16 },
+              automaticLayout: true,
+            }}
+          />
         </TabsContent>
 
-        <TabsContent value="preview" className="mt-0">
-          <div className="h-full flex flex-col gap-4">
-            <LivePreview 
-              code={editorRef.current?.getValue() || ''} 
-              isBuilding={isBuilding} 
-            />
-
-            {buildLog.length > 0 && (
-              <div className="p-4 bg-secondary rounded-lg">
-                <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  Build Output
-                </h3>
-                <pre className="text-xs whitespace-pre-wrap">
-                  {buildLog.join('\n')}
-                </pre>
-              </div>
-            )}
-          </div>
+        <TabsContent value="preview" className="mt-0 col-span-2 lg:col-span-1 h-full">
+          <LivePreview 
+            code={editorValue} 
+            isBuilding={isBuilding}
+          />
         </TabsContent>
       </div>
     </div>
