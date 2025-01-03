@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-
+import { motion, HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
@@ -33,15 +33,16 @@ const buttonVariants = cva(
   }
 )
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-}
+type ButtonBaseProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+type MotionButtonProps = Omit<HTMLMotionProps<"button">, keyof ButtonBaseProps> & ButtonBaseProps
+
+const MotionButton = React.forwardRef<HTMLButtonElement, MotionButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = asChild ? Slot : motion.button
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -51,6 +52,36 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     )
   }
 )
+
+MotionButton.displayName = "MotionButton"
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonBaseProps>(
+  (props, ref) => {
+    return (
+      <MotionButton
+        ref={ref}
+        {...props}
+        whileHover={{ 
+          scale: 1.02,
+          transition: { 
+            type: "spring",
+            stiffness: 400,
+            damping: 17
+          }
+        }}
+        whileTap={{ 
+          scale: 0.98,
+          transition: {
+            type: "spring",
+            stiffness: 400,
+            damping: 10
+          }
+        }}
+      />
+    )
+  }
+)
+
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
