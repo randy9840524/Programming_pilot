@@ -3,7 +3,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2 } from "lucide-react";
-import { analyzeCode } from "@/lib/ai";
 import { useToast } from "@/hooks/use-toast";
 
 interface AIAssistantProps {
@@ -13,6 +12,7 @@ interface AIAssistantProps {
 interface Message {
   role: "user" | "assistant";
   content: string;
+  error?: boolean;
 }
 
 export default function AIAssistant({ file }: AIAssistantProps) {
@@ -41,15 +41,60 @@ export default function AIAssistant({ file }: AIAssistantProps) {
     setIsLoading(true);
 
     try {
-      const response = await analyzeCode(file, question);
-      setMessages(prev => [...prev, { role: "assistant", content: response }]);
+      // First fetch the file content
+      console.log("Fetching file content for:", file);
+      const fileResponse = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+        credentials: 'include'
+      });
+
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to load file: ${await fileResponse.text()}`);
+      }
+
+      const fileData = await fileResponse.json();
+      if (!fileData.content) {
+        throw new Error("File content is empty");
+      }
+
+      // Then send for analysis
+      console.log("Sending for analysis...");
+      const analysisResponse = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: fileData.content,
+          question: question
+        }),
+        credentials: 'include'
+      });
+
+      const responseData = await analysisResponse.json();
+
+      if (!analysisResponse.ok) {
+        throw new Error(responseData.message || responseData.error || "Analysis failed");
+      }
+
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: responseData.response 
+      }]);
     } catch (error: any) {
+      console.error("AI request failed:", error);
+      const errorMessage = error.message || "Failed to get AI response";
+
       toast({
         title: "Error",
-        description: error.message || "Failed to get AI response",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error("AI request failed:", error);
+
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: `Error: ${errorMessage}`,
+        error: true
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +121,9 @@ export default function AIAssistant({ file }: AIAssistantProps) {
               <div
                 className={`max-w-[80%] rounded-lg p-3 ${
                   message.role === "assistant"
-                    ? "bg-secondary text-secondary-foreground"
+                    ? message.error 
+                      ? "bg-destructive/10 text-destructive" 
+                      : "bg-secondary text-secondary-foreground"
                     : "bg-primary text-primary-foreground"
                 }`}
               >

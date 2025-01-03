@@ -13,7 +13,14 @@ import { fileTypeFromBuffer } from "file-type";
 import express from "express";
 
 // Initialize OpenAI with API key from environment variable
-const openai = new OpenAI();
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+}) : null;
+
+if (!openai) {
+  console.error("WARNING: OpenAI API key is not configured. AI features will be disabled.");
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -106,6 +113,68 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // AI Analysis endpoint
+  app.post("/api/analyze", async (req, res) => {
+    if (!openai) {
+      return res.status(500).json({
+        error: "Configuration Error",
+        message: "OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable."
+      });
+    }
+
+    try {
+      const { code, question } = req.body;
+
+      if (!code || !question) {
+        return res.status(400).json({ 
+          error: "Missing Parameters", 
+          message: "Both code and question are required" 
+        });
+      }
+
+      console.log("Sending request to OpenAI...");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful coding assistant. Analyze code and provide concise, accurate responses."
+          },
+          {
+            role: "user",
+            content: `${question}\n\nHere's the code:\n\`\`\`\n${code}\n\`\`\``
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error("No response received from OpenAI");
+      }
+
+      console.log("Received response from OpenAI");
+      res.json({ response });
+    } catch (error: any) {
+      console.error("AI Analysis failed:", error);
+
+      let errorMessage = "Failed to analyze code";
+      if (error.response?.status === 401) {
+        errorMessage = "Invalid API key. Please check your OpenAI API key configuration.";
+      } else if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      res.status(500).json({
+        error: "AI Analysis Error",
+        message: errorMessage
+      });
+    }
+  });
+
   // File operations
   app.get("/api/files", async (_req, res) => {
     try {
@@ -124,17 +193,11 @@ export function registerRoutes(app: Express): Server {
       const [file] = await db
         .select()
         .from(files)
-        .where(eq(files.path, filePath));
+        .where(eq(files.path, filePath))
+        .limit(1);
 
       if (!file) {
         return res.status(404).send("File not found");
-      }
-
-      // If the file is binary (has base64 content), decode and send with proper content type
-      if (file.metadata?.mimeType) {
-        const buffer = Buffer.from(file.content, "base64");
-        res.setHeader("Content-Type", file.metadata.mimeType);
-        return res.send(buffer);
       }
 
       res.json(file);
@@ -212,47 +275,14 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Simple AI Analysis endpoint
-  app.post("/api/analyze", async (req, res) => {
-    const { prompt } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
-    }
-
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a helpful coding assistant. Analyze code and provide concise, accurate responses."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      });
-
-      const response = completion.choices[0]?.message?.content;
-      if (!response) {
-        throw new Error("No response received");
-      }
-
-      res.json({ response });
-    } catch (error: any) {
-      console.error("AI Analysis failed:", error);
-      res.status(500).json({
-        error: "Failed to analyze code",
-        details: error.message
-      });
-    }
-  });
 
   return httpServer;
+}
+
+interface FileNode {
+  name: string;
+  type: "file" | "folder";
+  children?: FileNode[];
 }
 
 function buildFileTree(fileList: typeof files.$inferSelect[]): FileNode[] {
@@ -270,12 +300,9 @@ function buildFileTree(fileList: typeof files.$inferSelect[]): FileNode[] {
       if (!map.has(currentPath)) {
         const node: FileNode = {
           name: part,
-          type: i === parts.length - 1 ? file.type as "file" | "folder" : "folder",
+          type: i === parts.length - 1 ? file.type : "folder",
+          children: i === parts.length - 1 ? undefined : [],
         };
-
-        if (node.type === "folder") {
-          node.children = [];
-        }
 
         map.set(currentPath, node);
         currentArray.push(node);
@@ -305,12 +332,6 @@ function getLanguageFromExt(ext: string): string {
     md: "markdown",
   };
   return map[ext] || "plaintext";
-}
-
-interface FileNode {
-  name: string;
-  type: "file" | "folder";
-  children?: FileNode[];
 }
 
 //Dummy function to avoid compile errors.  Needs to be replaced with actual OCR implementation.
