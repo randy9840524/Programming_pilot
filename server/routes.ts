@@ -65,21 +65,10 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      let messages;
-      const assetsDir = path.join(process.cwd(), "attached_assets");
-
-      // Check if there's a recent image upload and the prompt mentions attachments
-      if (prompt.toLowerCase().includes("attach")) {
-        const latestImage = await getLatestFile(assetsDir);
-        console.log("Latest image found:", latestImage);
-
-        if (latestImage) {
-          try {
-            const imageBuffer = await fs.promises.readFile(latestImage);
-            messages = [
-              {
-                role: "system",
-                content: `You are an expert software development assistant specializing in building web applications.
+      const messages = [
+        {
+          role: "system" as const,
+          content: `You are an expert software development assistant specializing in building web applications.
 You have access to a powerful IDE environment and can help users build and modify their applications.
 
 When users request to build or modify applications:
@@ -98,33 +87,44 @@ Remember:
 - You can implement any feature the user requests
 - Keep responses focused on practical implementation
 - Provide working code that fits the existing React/TypeScript stack
-- Be specific and detailed in your implementation guidance`,
+- Be specific and detailed in your implementation guidance`
+        }
+      ];
+
+      const assetsDir = path.join(process.cwd(), "attached_assets");
+      const latestImage = await getLatestFile(assetsDir);
+      console.log("Latest image found:", latestImage);
+
+      if (latestImage) {
+        try {
+          const imageBuffer = await fs.promises.readFile(latestImage);
+          messages.push({
+            role: "user" as const,
+            content: [
+              {
+                type: "text",
+                text: prompt
               },
               {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: prompt
-                  },
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: `data:image/png;base64,${imageBuffer.toString('base64')}`
-                    }
-                  }
-                ],
-              },
-            ];
-          } catch (error) {
-            console.error("Error reading image file:", error);
-            messages = [{ role: "user", content: prompt }];
-          }
-        } else {
-          messages = [{ role: "user", content: prompt }];
+                type: "image_url",
+                image_url: {
+                  url: `data:image/png;base64,${imageBuffer.toString('base64')}`
+                }
+              }
+            ]
+          });
+        } catch (error) {
+          console.error("Error reading image file:", error);
+          messages.push({
+            role: "user" as const,
+            content: prompt
+          });
         }
       } else {
-        messages = [{ role: "user", content: prompt }];
+        messages.push({
+          role: "user" as const,
+          content: prompt
+        });
       }
 
       console.log("Sending request to OpenAI");
@@ -133,7 +133,7 @@ Remember:
         model: "gpt-4o",
         messages,
         temperature: 0.7,
-        max_tokens: 3000,
+        max_tokens: 3000
       });
 
       const response = completion.choices[0]?.message?.content;
