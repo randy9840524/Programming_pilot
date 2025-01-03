@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { setupCollaborativeEditing } from "./collaborative";
 import { db } from "@db";
 import { files, codeSnippets } from "@db/schema";
 import { eq, and, ilike, or } from "drizzle-orm";
@@ -9,7 +10,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import multer from "multer";
 import { fileTypeFromBuffer } from "file-type";
-import { createWorker } from "tesseract.js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const __filename = fileURLToPath(import.meta.url);
@@ -18,17 +18,17 @@ const __dirname = path.dirname(__filename);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit for documents
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
 });
 
-interface FileNode {
-  name: string;
-  type: "file" | "folder";
-  children?: FileNode[];
-}
-
 export function registerRoutes(app: Express): Server {
+  // Create HTTP server
+  const httpServer = createServer(app);
+
+  // Set up WebSocket server for collaborative editing
+  setupCollaborativeEditing(httpServer);
+
   // Serve Monaco Editor assets
   const monacoDir = path.resolve(__dirname, '../node_modules/monaco-editor');
   app.use('/monaco-editor', express.static(path.join(monacoDir, 'min')));
@@ -325,7 +325,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  const httpServer = createServer(app);
   return httpServer;
 }
 
@@ -379,4 +378,10 @@ function getLanguageFromExt(ext: string): string {
     md: "markdown",
   };
   return map[ext] || "plaintext";
+}
+
+interface FileNode {
+  name: string;
+  type: "file" | "folder";
+  children?: FileNode[];
 }

@@ -11,14 +11,90 @@ interface EditorProps {
   onAIToggle: () => void;
 }
 
+interface CollaborationMessage {
+  type: 'cursor' | 'selection' | 'edit' | 'user_left';
+  userId: string;
+  file: string;
+  data: any;
+}
+
 export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const editorRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fileData, setFileData] = useState<any>(null);
+  const [collaborators, setCollaborators] = useState(new Set<string>());
   const { toast } = useToast();
+
+  // WebSocket connection
+  useEffect(() => {
+    if (!file) return;
+
+    const ws = new WebSocket(`ws://${window.location.host}/ws/collaborative`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const message: CollaborationMessage = JSON.parse(event.data);
+      const editor = editorRef.current;
+      if (!editor) return;
+
+      switch (message.type) {
+        case 'cursor':
+          // Handle cursor updates
+          setCollaborators(prev => new Set(prev).add(message.userId));
+          break;
+        case 'selection':
+          // Handle selection updates
+          break;
+        case 'edit':
+          // Handle content updates
+          if (message.data.content) {
+            const currentPosition = editor.getPosition();
+            editor.setValue(message.data.content);
+            editor.setPosition(currentPosition);
+          }
+          break;
+        case 'user_left':
+          setCollaborators(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(message.userId);
+            return newSet;
+          });
+          break;
+      }
+    };
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
+  }, [file]);
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
+
+    // Set up collaboration features
+    editor.onDidChangeModelContent(() => {
+      if (!wsRef.current || !file) return;
+
+      const content = editor.getValue();
+      wsRef.current.send(JSON.stringify({
+        type: 'edit',
+        file,
+        data: { content }
+      }));
+    });
+
+    editor.onDidChangeCursorPosition(() => {
+      if (!wsRef.current || !file) return;
+
+      const position = editor.getPosition();
+      wsRef.current.send(JSON.stringify({
+        type: 'cursor',
+        file,
+        data: { position }
+      }));
+    });
   }
 
   useEffect(() => {
@@ -120,6 +196,13 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   return (
     <div className="h-full relative">
       <div className="absolute top-2 right-2 flex gap-2 z-10">
+        {collaborators.size > 0 && (
+          <div className="flex items-center gap-1">
+            <Badge variant="outline">
+              {collaborators.size} collaborator{collaborators.size !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        )}
         <Button
           variant="secondary"
           size="sm"
@@ -185,4 +268,16 @@ function getLanguageFromExt(ext: string): string {
     md: "markdown",
   };
   return map[ext] || "plaintext";
+}
+
+function isPreviewableDocument(mimeType?: string) {
+  if (!mimeType) return false;
+  return (
+    mimeType.startsWith("image/") ||
+    mimeType === "application/pdf" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    mimeType === "application/msword" ||
+    mimeType === "application/vnd.ms-excel"
+  );
 }
