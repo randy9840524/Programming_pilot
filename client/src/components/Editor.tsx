@@ -6,8 +6,8 @@ import {
   Save, Play, Code2, Eye, RefreshCcw, Download, Upload, 
   Copy, Settings2, FileText, RotateCcw, Share2, Terminal,
   Laptop, GitBranch, Database, Lock, Bot, Palette, PanelRight,
-  Settings, Maximize2, Split, Minimize2,
-  Split, ChevronDown, ChevronRight, XCircle, Plus, Search, Trash2, 
+  Settings, Maximize2, Minimize2, Split,
+  ChevronDown, ChevronRight, XCircle, Plus, Search, Trash2, 
   Code
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -141,93 +141,104 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     );
   }
 
-  const renderToolbar = () => (
-    <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 mr-4">
+  function renderToolbar() {
+    return (
+      <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 mr-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSave}
+              className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+            >
+              <Save className="h-4 w-4" />
+              Save Changes
+            </Button>
+
+            <Button
+              variant={isBuilding ? "outline" : "default"}
+              size="sm"
+              onClick={handleBuild}
+              disabled={isBuilding}
+              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-medium px-4"
+            >
+              {isBuilding ? (
+                <RefreshCcw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {isBuilding ? "Building..." : "Run & Preview"}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-1 border-l pl-4">
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('editor')}
+              className={cn(
+                "hover:bg-slate-100 dark:hover:bg-slate-800",
+                viewMode === 'editor' && "bg-slate-100 dark:bg-slate-800"
+              )}
+            >
+              <Code2 className="h-4 w-4 mr-1" />
+              Code Editor
+            </Button>
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('split')}
+              className={cn(
+                "hover:bg-slate-100 dark:hover:bg-slate-800",
+                viewMode === 'split' && "bg-slate-100 dark:bg-slate-800"
+              )}
+            >
+              <Split className="h-4 w-4 mr-1" />
+              Split View
+            </Button>
+            <Button 
+              variant="ghost"
+              size="sm"
+              onClick={() => setViewMode('preview')}
+              className={cn(
+                "hover:bg-slate-100 dark:hover:bg-slate-800",
+                viewMode === 'preview' && "bg-slate-100 dark:bg-slate-800"
+              )}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Live Preview
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleSave}
-            className="flex items-center gap-1"
+            onClick={onAIToggle}
+            className="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700"
           >
-            <Save className="h-4 w-4" />
-            Save
+            <Bot className="h-4 w-4" />
+            AI Assistant
           </Button>
 
           <Button
-            variant={isBuilding ? "outline" : "default"}
+            variant="outline"
             size="sm"
-            onClick={handleBuild}
-            disabled={isBuilding}
-            className="flex items-center gap-1"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            {isBuilding ? (
-              <RefreshCcw className="h-4 w-4 animate-spin" />
+            {isFullscreen ? (
+              <Minimize2 className="h-4 w-4" />
             ) : (
-              <Play className="h-4 w-4" />
+              <Maximize2 className="h-4 w-4" />
             )}
-            {isBuilding ? "Building..." : "Build & Run"}
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-1 border-l pl-4">
-          <Button 
-            variant={viewMode === 'editor' ? 'secondary' : 'ghost'} 
-            size="sm"
-            onClick={() => setViewMode('editor')}
-          >
-            <Code className="h-4 w-4 mr-1" />
-            Editor
-          </Button>
-          <Button 
-            variant={viewMode === 'split' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('split')}
-          >
-            <Split className="h-4 w-4 mr-1" />
-            Split View
-          </Button>
-          <Button 
-            variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('preview')}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            Preview
           </Button>
         </div>
       </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAIToggle}
-          className="flex items-center gap-1"
-        >
-          <Bot className="h-4 w-4" />
-          AI Assistant
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsFullscreen(!isFullscreen)}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </Button>
-
-        <Button variant="ghost" size="icon">
-          <Settings className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className={`h-full flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
