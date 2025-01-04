@@ -91,7 +91,7 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 45 : 85}>
+          <ResizablePanel defaultSize={showAI ? 40 : 85}>
             <Editor
               file={selectedFile}
               onAIToggle={() => setShowAI(!showAI)}
@@ -101,8 +101,8 @@ export default function EditorPage() {
           {showAI && (
             <>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={40} minSize={30}>
-                <div className="h-full border-l">
+              <ResizablePanel defaultSize={45} minSize={30}>
+                <div className="h-full">
                   <AIAssistant />
                 </div>
               </ResizablePanel>

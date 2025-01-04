@@ -85,91 +85,86 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Simple health check endpoint
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  // AI Analysis endpoint
+  // AI Analysis endpoint with enhanced file handling
   app.post("/api/analyze", async (req, res) => {
     try {
-      const { prompt } = req.body;
-      console.log("Received analyze request:", { prompt });
+      const { prompt, files: uploadedFiles } = req.body;
+      console.log("Received analyze request:", { prompt, filesCount: uploadedFiles?.length });
 
       if (!process.env.OPENAI_API_KEY) {
         console.error("OpenAI API key not configured");
-        return res.status(500).json({ 
-          message: "OpenAI API key not configured" 
-        });
+        return res.status(500).json({ message: "OpenAI API key not configured" });
       }
 
-      if (!prompt) {
-        console.error("Missing prompt");
-        return res.status(400).json({ 
-          message: "Please provide a development request" 
-        });
-      }
-
-      const messages = [
+      const messages: any[] = [
         {
           role: "system" as const,
-          content: `You are an expert software development assistant specializing in building web applications.
-You have access to a powerful IDE environment and can help users build and modify their applications.
+          content: `You are an expert software development assistant specializing in building web applications. 
+You can see and analyze both code and images that users share.
+When analyzing uploaded content:
+1. First describe what you see in any images
+2. Then provide specific, actionable guidance for implementation
+3. Include complete code samples when relevant
+4. Always acknowledge uploaded files in your response
 
-When users request to build or modify applications:
-1. First analyze and acknowledge their requirements
-2. Break down the implementation into clear steps
-3. Provide specific code samples for each step
-4. Focus on practical, implementable solutions
-5. Always provide complete code snippets that can be directly used
-
-For UI/design requests:
-- Provide complete React component code including all necessary imports
-- Include exact Tailwind CSS classes for styling
-- Explain the integration steps clearly
-
-Remember:
-- You can implement any feature the user requests
-- Keep responses focused on practical implementation
-- Provide working code that fits the existing React/TypeScript stack
-- Be specific and detailed in your implementation guidance`
+Remember to:
+- Be specific about UI elements and layout
+- Provide complete code snippets that can be directly used
+- Reference visual elements from uploaded images in your explanations`
         }
       ];
 
-      const assetsDir = path.join(process.cwd(), "attached_assets");
-      const latestImage = await getLatestFile(assetsDir);
-      console.log("Latest image found:", latestImage);
+      // Add uploaded files to the message
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        const fileContents = uploadedFiles.map((file: any) => ({
+          type: file.type.startsWith('image/') ? 'image_url' : 'text',
+          [file.type.startsWith('image/') ? 'image_url' : 'text']: 
+            file.type.startsWith('image/') ? 
+            { url: `data:${file.type};base64,${file.data}` } : 
+            file.data
+        }));
 
-      if (latestImage) {
-        try {
-          const imageBuffer = await fs.promises.readFile(latestImage);
-          messages.push({
-            role: "user" as const,
-            content: [
-              {
-                type: "text",
-                text: prompt
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/png;base64,${imageBuffer.toString('base64')}`
+        messages.push({
+          role: "user" as const,
+          content: [
+            { type: "text", text: prompt || "Please analyze these files" },
+            ...fileContents
+          ]
+        });
+      } else {
+        // Check for files in assets directory
+        const assetsDir = path.join(process.cwd(), "attached_assets");
+        const latestImage = await getLatestFile(assetsDir);
+        console.log("Latest image found:", latestImage);
+
+        if (latestImage) {
+          try {
+            const imageBuffer = await fs.promises.readFile(latestImage);
+            messages.push({
+              role: "user" as const,
+              content: [
+                { type: "text", text: prompt },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:image/png;base64,${imageBuffer.toString('base64')}`
+                  }
                 }
-              }
-            ]
-          });
-        } catch (error) {
-          console.error("Error reading image file:", error);
+              ]
+            });
+          } catch (error) {
+            console.error("Error reading image file:", error);
+            messages.push({
+              role: "user" as const,
+              content: prompt
+            });
+          }
+        } else {
           messages.push({
             role: "user" as const,
             content: prompt
           });
         }
-      } else {
-        messages.push({
-          role: "user" as const,
-          content: prompt
-        });
       }
 
       console.log("Sending request to OpenAI");

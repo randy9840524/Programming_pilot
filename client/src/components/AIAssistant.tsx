@@ -18,6 +18,7 @@ export default function AIAssistant() {
   const [files, setFiles] = useState<FilePreview[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
@@ -32,6 +33,7 @@ export default function AIAssistant() {
           type: file.type,
           url
         }]);
+        setMessages(prev => [...prev, `Uploaded file: ${file.name}`]);
       };
       reader.readAsDataURL(file);
     });
@@ -39,6 +41,14 @@ export default function AIAssistant() {
 
   const removeFile = (fileName: string) => {
     setFiles(prev => prev.filter(file => file.name !== fileName));
+    setMessages(prev => [...prev, `Removed file: ${fileName}`]);
+  };
+
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollArea = scrollAreaRef.current;
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -79,7 +89,8 @@ export default function AIAssistant() {
 
       const data = await response.json();
       setMessages(prev => [...prev, `AI: ${data.response}`]);
-      setFiles([]); // Clear files after analysis
+      // Only clear files after successful analysis
+      setFiles([]);
     } catch (error: any) {
       console.error("Development request failed:", error);
       toast({
@@ -90,6 +101,7 @@ export default function AIAssistant() {
       setMessages(prev => [...prev, `Error: ${error.message || "Failed to process development request"}`]);
     } finally {
       setIsLoading(false);
+      scrollToBottom();
     }
   }
 
@@ -98,32 +110,52 @@ export default function AIAssistant() {
       <div className="border-b p-4">
         <h2 className="text-xl font-semibold">Development Assistant</h2>
         <p className="text-sm text-muted-foreground">
-          I can help analyze code, images, and files
+          I can help analyze code, images, and files to assist with development
         </p>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {messages.map((msg, i) => (
-            <div key={i} className="text-sm">
-              {msg.startsWith("Error:") ? (
-                <p className="text-destructive font-medium">{msg}</p>
-              ) : (
-                <p className="whitespace-pre-wrap">{msg}</p>
-              )}
+            <div 
+              key={i} 
+              className={`p-3 rounded-lg ${
+                msg.startsWith("You:") ? "bg-primary/10" : 
+                msg.startsWith("Error:") ? "bg-destructive/10" :
+                msg.startsWith("Uploaded file:") || msg.startsWith("Removed file:") ? "bg-secondary/20" :
+                "bg-secondary"
+              }`}
+            >
+              <p className={`text-sm whitespace-pre-wrap ${
+                msg.startsWith("Error:") ? "text-destructive" :
+                msg.startsWith("Uploaded file:") || msg.startsWith("Removed file:") ? "text-muted-foreground" :
+                ""
+              }`}>
+                {msg}
+              </p>
             </div>
           ))}
           {files.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium">Uploaded Files:</p>
               {files.map((file) => (
-                <div key={file.name} className="flex items-center gap-2 p-2 bg-secondary rounded-md">
+                <div key={file.name} className="flex items-center gap-2 p-2 bg-secondary rounded-lg">
                   {file.type.startsWith('image/') ? (
-                    <ImageIcon className="h-4 w-4" />
+                    <div className="flex items-center gap-2 flex-1">
+                      <ImageIcon className="h-4 w-4" />
+                      <span className="text-sm truncate">{file.name}</span>
+                      <img 
+                        src={file.url} 
+                        alt={file.name}
+                        className="h-8 w-8 object-cover rounded"
+                      />
+                    </div>
                   ) : (
-                    <FileText className="h-4 w-4" />
+                    <div className="flex items-center gap-2 flex-1">
+                      <FileText className="h-4 w-4" />
+                      <span className="text-sm truncate">{file.name}</span>
+                    </div>
                   )}
-                  <span className="text-sm flex-1 truncate">{file.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -183,7 +215,7 @@ export default function AIAssistant() {
           />
           <Button
             type="submit"
-            className="self-end"
+            className={`self-end ${isLoading ? 'bg-muted' : ''}`}
             disabled={isLoading || (!input.trim() && files.length === 0)}
           >
             {isLoading ? (
