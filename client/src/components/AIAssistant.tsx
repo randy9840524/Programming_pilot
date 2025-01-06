@@ -8,12 +8,17 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
 interface FilePreview {
   name: string;
   type: string;
   url: string;
   data?: string;
+  content?: string;
 }
 
 export default function AIAssistant() {
@@ -42,21 +47,57 @@ export default function AIAssistant() {
     multiple: true
   });
 
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const url = e.target?.result as string;
-      const base64Data = url.split(',')[1];
+  const processFile = async (file: File) => {
+    try {
+      const reader = new FileReader();
 
-      setFiles(prev => [...prev, {
-        name: file.name,
-        type: file.type,
-        url,
-        data: base64Data
-      }]);
-      setMessages(prev => [...prev, `Uploaded ${file.type.startsWith('image/') ? 'image' : 'code'} file: ${file.name}`]);
-    };
-    reader.readAsDataURL(file);
+      reader.onload = async (e) => {
+        const url = e.target?.result as string;
+        const base64Data = url.split(',')[1];
+
+        let content: string | undefined;
+        if (!file.type.startsWith('image/')) {
+          // For text files, read the content
+          const textReader = new FileReader();
+          content = await new Promise((resolve) => {
+            textReader.onload = (e) => resolve(e.target?.result as string);
+            textReader.readAsText(file);
+          });
+        }
+
+        setFiles(prev => [...prev, {
+          name: file.name,
+          type: file.type,
+          url,
+          data: base64Data,
+          content
+        }]);
+
+        toast({
+          title: "File uploaded",
+          description: `Successfully uploaded ${file.name}`,
+        });
+
+        setMessages(prev => [...prev, `Uploaded ${file.type.startsWith('image/') ? 'image' : 'code'} file: ${file.name}`]);
+      };
+
+      reader.onerror = () => {
+        toast({
+          title: "Error",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive"
+        });
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('File processing error:', error);
+      toast({
+        title: "Error",
+        description: `Failed to process ${file.name}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,6 +230,80 @@ export default function AIAssistant() {
             </p>
           </div>
 
+          {files.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Uploaded Files:</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={analyzeFiles}
+                  disabled={isAnalyzing}
+                >
+                  {isAnalyzing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  Analyze Files
+                </Button>
+              </div>
+
+              {files.map((file) => (
+                <Card key={file.name} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        {file.type.startsWith('image/') ? (
+                          <ImageIcon className="h-4 w-4" />
+                        ) : file.type.includes('javascript') || file.type.includes('typescript') ? (
+                          <Code2 className="h-4 w-4" />
+                        ) : file.type.includes('html') ? (
+                          <Globe className="h-4 w-4" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        <span className="font-medium">{file.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(file.url)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(file.name)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {file.type.startsWith('image/') ? (
+                      <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                        <img 
+                          src={file.url} 
+                          alt={file.name}
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <pre className="bg-secondary p-4 rounded-lg overflow-x-auto max-h-[300px]">
+                        <code className="text-sm">
+                          {file.content || 'Unable to preview file content'}
+                        </code>
+                      </pre>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
           {messages.map((msg, i) => (
             <div 
               key={i} 
@@ -210,74 +325,6 @@ export default function AIAssistant() {
               </p>
             </div>
           ))}
-
-          {files.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Uploaded Files:</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={analyzeFiles}
-                  disabled={isAnalyzing}
-                >
-                  {isAnalyzing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Analyze Files
-                </Button>
-              </div>
-
-              {files.map((file) => (
-                <div key={file.name} className="flex items-center gap-2 p-2 bg-secondary rounded-lg">
-                  {file.type.startsWith('image/') ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <ImageIcon className="h-4 w-4" />
-                      <span className="text-sm truncate">{file.name}</span>
-                      <img 
-                        src={file.url} 
-                        alt={file.name}
-                        className="h-12 w-12 object-cover rounded"
-                      />
-                    </div>
-                  ) : file.type.includes('javascript') || file.type.includes('typescript') ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <Code2 className="h-4 w-4" />
-                      <span className="text-sm truncate">{file.name}</span>
-                    </div>
-                  ) : file.type.includes('html') ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <Globe className="h-4 w-4" />
-                      <span className="text-sm truncate">{file.name}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 flex-1">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm truncate">{file.name}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(file.url)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFile(file.name)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </ScrollArea>
 
