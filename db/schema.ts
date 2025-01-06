@@ -21,6 +21,38 @@ export const projects = pgTable("projects", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const artifacts = pgTable("artifacts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: text("content").notNull(),
+  contentType: text("content_type").notNull(), // markdown, code, diagram, etc.
+  projectId: integer("project_id").references(() => projects.id),
+  version: integer("version").default(1),
+  metadata: jsonb("metadata").$type<{
+    language?: string;
+    framework?: string;
+    tags?: string[];
+    lastEditDescription?: string;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const artifactVersions = pgTable("artifact_versions", {
+  id: serial("id").primaryKey(),
+  artifactId: integer("artifact_id").references(() => artifacts.id),
+  version: integer("version").notNull(),
+  content: text("content").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata").$type<{
+    editType: "targeted" | "full";
+    changes?: string[];
+    performance?: number;
+  }>(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const files = pgTable("files", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").references(() => projects.id),
@@ -49,6 +81,17 @@ export const codeSnippets = pgTable("code_snippets", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Schemas for new tables
+export const insertArtifactSchema = createInsertSchema(artifacts);
+export const selectArtifactSchema = createSelectSchema(artifacts);
+export type InsertArtifact = z.infer<typeof insertArtifactSchema>;
+export type SelectArtifact = z.infer<typeof selectArtifactSchema>;
+
+export const insertArtifactVersionSchema = createInsertSchema(artifactVersions);
+export const selectArtifactVersionSchema = createSelectSchema(artifactVersions);
+export type InsertArtifactVersion = z.infer<typeof insertArtifactVersionSchema>;
+export type SelectArtifactVersion = z.infer<typeof selectArtifactVersionSchema>;
 
 // Project schemas
 export const insertProjectSchema = createInsertSchema(projects, {

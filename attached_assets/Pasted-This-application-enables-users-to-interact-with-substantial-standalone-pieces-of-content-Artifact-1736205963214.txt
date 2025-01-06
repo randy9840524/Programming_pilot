@@ -1,0 +1,70 @@
+This application enables users to interact with substantial, standalone pieces of content ("Artifacts") in a dedicated interface. The application will allow users to create, view, edit, and manage Artifacts such as documents, code snippets, diagrams, and more. Artifacts are designed to be easily reusable, iterated upon, and referenced, ensuring users have a seamless workflow for content management. Features include version tracking, targeted updates, and tools for making complex edits without losing historical versions.
+
+Target Platform:
+Web Application
+
+Operating Environment:
+Online - users will access it through a browser.
+
+Hosting Options:
+The application will be hosted on a cloud platform such as AWS or Azure to ensure scalability and reliability. Alternatively, users can self-host the application if desired.
+
+Interface Style:
+
+Minimalist and user-friendly design for easy navigation and interaction.
+Dedicated "Artifact Window" on the right-hand side for managing and interacting with Artifacts.
+Clear, intuitive buttons for editing, version tracking, and downloading content.
+Example Applications:
+
+Google Docs (for content management)
+GitHub Gists (for versioned code snippets)
+Figma (for collaborative updates and targeted changes)
+Expected Outputs:
+
+Interactive and editable Artifacts displayed in a dedicated section.
+Version history for all changes made to Artifacts.
+Tools for targeted updates (editing small sections) or full rewrites of content.
+Options to copy, download, or view underlying Artifact content.
+A version selector to track and manage historical versions of Artifacts.
+Additional Features:
+
+Artifact Management:
+
+Display and interact with Artifacts in a dedicated "Artifact Window" on the right side of the interface.
+Allow users to switch between multiple Artifacts in one session.
+Include functionality to view, copy, or download Artifacts.
+Version Tracking:
+
+Store and manage versions of Artifacts, allowing users to revert or compare versions.
+Display a version selector in the Artifact Window for quick navigation.
+Editing Tools:
+
+Enable targeted updates (small edits to specific sections of content) based on user descriptions.
+Support full rewrites for substantial restructuring.
+Provide an analysis tool feature for enhanced editing capabilities.
+Content Support:
+
+Handle different types of content, including Markdown, Plain Text, Code Snippets, SVG images, flowcharts, and React components.
+Offer options to view and edit underlying code for more technical users.
+Interaction Controls:
+
+Provide a slider icon to open and manage multiple Artifacts within a single session.
+Include advanced search functionality to locate specific Artifacts or edits.
+Best Practices Integration:
+
+Offer prompts to guide users in providing specific instructions for updates.
+Highlight examples of targeted updates versus full rewrites.
+Language Preferences:
+
+Interaction with Replit Agent: English
+Application Interface Language: English
+Technical Specifications:
+
+Frontend: React.js for dynamic UI and Artifact interaction.
+Backend: Node.js with Express for managing Artifact storage and version tracking.
+Database: MongoDB or PostgreSQL for version control and Artifact data.
+Cloud Hosting: AWS S3/EC2 or Azure for scalability.
+Additional Libraries:
+Markdown rendering (e.g., react-markdown)
+SVG handling (e.g., svg.js)
+Syntax highlighting for code snippets (e.g., prism.js or highlight.js).

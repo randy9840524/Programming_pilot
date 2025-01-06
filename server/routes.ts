@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { promisify } from "util";
-import { projects, insertProjectSchema, files } from "@db/schema";
+import { artifacts, projects, insertProjectSchema, files, artifactVersions } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
@@ -42,6 +42,133 @@ async function getLatestFile(directory: string): Promise<string | null> {
 
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+
+  // Get all artifacts for a project
+  app.get("/api/artifacts", async (req, res) => {
+    try {
+      const projectId = parseInt(req.query.projectId as string);
+      if (isNaN(projectId)) {
+        return res.status(400).send("Project ID is required");
+      }
+
+      const projectArtifacts = await db
+        .select()
+        .from(artifacts)
+        .where(eq(artifacts.projectId, projectId));
+
+      res.json(projectArtifacts);
+    } catch (error) {
+      console.error("Failed to fetch artifacts:", error);
+      res.status(500).json({ message: "Failed to fetch artifacts" });
+    }
+  });
+
+  // Get artifact versions
+  app.get("/api/artifacts/:id/versions", async (req, res) => {
+    try {
+      const artifactId = parseInt(req.params.id);
+      if (isNaN(artifactId)) {
+        return res.status(400).send("Invalid artifact ID");
+      }
+
+      const versions = await db
+        .select()
+        .from(artifactVersions)
+        .where(eq(artifactVersions.artifactId, artifactId))
+        .orderBy(artifactVersions.version);
+
+      res.json(versions);
+    } catch (error) {
+      console.error("Failed to fetch artifact versions:", error);
+      res.status(500).json({ message: "Failed to fetch versions" });
+    }
+  });
+
+  // Create new artifact
+  app.post("/api/artifacts", async (req, res) => {
+    try {
+      const { title, description, content, contentType, projectId } = req.body;
+
+      if (!title || !content || !contentType || !projectId) {
+        return res.status(400).send("Missing required fields");
+      }
+
+      const [artifact] = await db
+        .insert(artifacts)
+        .values({
+          title,
+          description,
+          content,
+          contentType,
+          projectId,
+          version: 1,
+        })
+        .returning();
+
+      // Create initial version
+      await db.insert(artifactVersions).values({
+        artifactId: artifact.id,
+        version: 1,
+        content,
+        description: "Initial version",
+        metadata: { editType: "full" },
+      });
+
+      res.json(artifact);
+    } catch (error) {
+      console.error("Failed to create artifact:", error);
+      res.status(500).json({ message: "Failed to create artifact" });
+    }
+  });
+
+  // Update artifact
+  app.put("/api/artifacts/:id", async (req, res) => {
+    try {
+      const artifactId = parseInt(req.params.id);
+      const { content, description } = req.body;
+
+      if (isNaN(artifactId)) {
+        return res.status(400).send("Invalid artifact ID");
+      }
+
+      // Get current artifact
+      const [currentArtifact] = await db
+        .select()
+        .from(artifacts)
+        .where(eq(artifacts.id, artifactId))
+        .limit(1);
+
+      if (!currentArtifact) {
+        return res.status(404).send("Artifact not found");
+      }
+
+      // Create new version
+      const newVersion = currentArtifact.version + 1;
+      await db.insert(artifactVersions).values({
+        artifactId,
+        version: newVersion,
+        content,
+        description,
+        metadata: { editType: "full" },
+      });
+
+      // Update artifact
+      const [updatedArtifact] = await db
+        .update(artifacts)
+        .set({
+          content,
+          version: newVersion,
+          updatedAt: new Date(),
+        })
+        .where(eq(artifacts.id, artifactId))
+        .returning();
+
+      res.json(updatedArtifact);
+    } catch (error) {
+      console.error("Failed to update artifact:", error);
+      res.status(500).json({ message: "Failed to update artifact" });
+    }
+  });
 
   // Get all projects
   app.get("/api/projects", async (_req, res) => {

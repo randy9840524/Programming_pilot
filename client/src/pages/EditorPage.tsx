@@ -2,26 +2,31 @@ import { useEffect, useState } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, Settings, Terminal, Code2, Play, Save, RefreshCw, Database, Laptop } from "lucide-react";
+import { Menu, Settings, Terminal, Code2, Play, Save, RefreshCw, Database, Laptop, FileText, Layers } from "lucide-react";
 import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
+import ArtifactManager from "@/components/ArtifactManager";
 import ProjectSelector from "@/components/ProjectSelector";
 import { useMobile } from "@/hooks/use-mobile";
 
+type RightPanelView = 'ai' | 'artifacts';
+
 export default function EditorPage() {
   const [showSidebar, setShowSidebar] = useState(true);
-  const [showAI, setShowAI] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [rightPanelView, setRightPanelView] = useState<RightPanelView>('ai');
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     document.title = "CodeCraft IDE - Modern Development Environment";
 
     if (isMobile) {
       setShowSidebar(false);
-      setShowAI(false);
+      setShowRightPanel(false);
     }
   }, [isMobile]);
 
@@ -41,7 +46,7 @@ export default function EditorPage() {
 
         <div className="flex-1 flex items-center gap-4 overflow-x-auto">
           <span className="font-bold text-lg whitespace-nowrap">CodeCraft IDE</span>
-          <ProjectSelector />
+          <ProjectSelector onSelect={(id) => setSelectedProjectId(id)} />
           <CommandPalette />
 
           <div className="flex items-center gap-2 ml-auto">
@@ -64,10 +69,33 @@ export default function EditorPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowAI(!showAI)}
+            onClick={() => setShowRightPanel(!showRightPanel)}
+            className="flex items-center gap-2"
           >
-            {showAI ? "Hide AI" : "Show AI"}
+            {showRightPanel ? "Hide Panel" : "Show Panel"}
           </Button>
+          {showRightPanel && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant={rightPanelView === 'ai' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRightPanelView('ai')}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                AI Assistant
+              </Button>
+              <Button
+                variant={rightPanelView === 'artifacts' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setRightPanelView('artifacts')}
+                className="flex items-center gap-2"
+              >
+                <Layers className="h-4 w-4" />
+                Artifacts
+              </Button>
+            </div>
+          )}
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
           </Button>
@@ -91,19 +119,23 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showAI ? 40 : 85}>
+          <ResizablePanel defaultSize={showRightPanel ? 40 : 85}>
             <Editor
               file={selectedFile}
-              onAIToggle={() => setShowAI(!showAI)}
+              onPanelToggle={() => setShowRightPanel(!showRightPanel)}
             />
           </ResizablePanel>
 
-          {showAI && (
+          {showRightPanel && (
             <>
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={45} minSize={30}>
                 <div className="h-full">
-                  <AIAssistant />
+                  {rightPanelView === 'ai' ? (
+                    <AIAssistant />
+                  ) : (
+                    <ArtifactManager projectId={selectedProjectId || 0} />
+                  )}
                 </div>
               </ResizablePanel>
             </>
