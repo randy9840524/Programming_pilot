@@ -1,0 +1,49 @@
+The Multi-Input Design Builder is an intelligent application that allows users to upload images, paste code, and provide screenshots of websites to generate a fully functional working model. The application will analyze the input data and design a corresponding web-based or desktop application that is ready for deployment. The goal is to streamline the prototyping and development process, reducing the time and effort required for creating functional applications.
+
+Target Platform:
+The project will support both Web-based and Desktop deployments, giving users the flexibility to choose their preferred environment.
+
+Operating Environment:
+The application will work online, leveraging cloud computing resources for intensive processing while also offering optional offline functionality for editing and exporting smaller projects.
+
+Hosting Options:
+The application will be hosted on AWS to ensure scalability, reliability, and robust performance. However, users will also have the option to download the tool for local use on their desktops.
+
+Interface Style:
+The interface will be modern, user-friendly, and minimalist, with intuitive drag-and-drop functionality, real-time previews, and easy navigation. It will take inspiration from platforms like Claude.ai and Figma, focusing on simplicity and responsiveness.
+
+Example Applications:
+
+Claude.ai
+Figma
+Webflow
+Expected Outputs:
+
+A fully functional, ready-to-deploy web-based or desktop application.
+Exported code (HTML, CSS, JavaScript, or frameworks like React or Vue.js).
+Editable project files for further customization.
+Additional Features:
+
+Image Upload and Processing: Users can upload images (e.g., sketches, UI mockups) to guide the application design.
+Code Input Parsing: Paste code snippets to integrate custom functionality or pre-existing modules.
+Website Screenshot Import: Analyze and recreate designs or layouts based on screenshots of existing websites.
+AI-Powered Suggestions: The application will suggest enhancements, styles, or templates based on uploaded content.
+Drag-and-Drop Editor: Modify and fine-tune designs with an easy-to-use editor.
+Preview Mode: Real-time previews of the generated application for web and desktop.
+Export Options: Export the final project as ready-to-deploy files or share them with team members for collaboration.
+Custom Templates: The app will include a library of customizable templates for users who want to build quickly.
+Version Control: Save multiple versions of the project and track changes.
+Cross-Platform Compatibility: Ensure designs and functionality work seamlessly across browsers and devices.
+Language Preferences:
+
+Interaction with Replit Agent: English
+Application Interface: English, with future support for localization in multiple languages.
+Prompt:
+"Create a multi-functional application called Multi-Input Design Builder. This tool should allow users to:
+
+Upload images (e.g., sketches, wireframes, or design inspirations) to auto-generate corresponding application designs.
+Paste code snippets for embedding functionality into the generated application.
+Provide website screenshots to analyze and recreate layouts or functionality.
+The application must feature a modern, minimalist interface with drag-and-drop functionality, real-time previews, and robust export options. It should support both web-based and desktop deployment, with hosting primarily on AWS but also provide offline capabilities for desktop users. Include AI-powered design suggestions and cross-platform compatibility to enhance usability.
+
+Outputs should include ready-to-deploy files, editable project files, and exportable code in frameworks like HTML/CSS/JavaScript or React/Vue.js. The interface and interactions must be in English, with plans for multilingual support in the future. The design and workflow should draw inspiration from platforms like Claude.ai, Figma, and Webflow."
