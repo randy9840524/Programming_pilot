@@ -30,8 +30,10 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
       fetch(`/api/files/${encodeURIComponent(file)}`)
         .then(res => res.text())
         .then(content => {
-          editorRef.current.setValue(content);
-          setEditorValue(content);
+          if (editorRef.current) {
+            editorRef.current.setValue(content);
+            setEditorValue(content);
+          }
         })
         .catch(console.error);
     }
@@ -114,6 +116,11 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
+    // Set initial value if available
+    const initialValue = editor.getValue();
+    if (initialValue) {
+      setEditorValue(initialValue);
+    }
   }
 
   if (!file) {
@@ -128,7 +135,6 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
     <div className="h-full flex flex-col">
       <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-2">
-          {/* File Actions */}
           <div className="flex items-center gap-2 mr-4">
             <Button
               variant="outline"
@@ -156,7 +162,6 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
             </Button>
           </div>
 
-          {/* Development Tools */}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
               <Terminal className="h-4 w-4" />
@@ -219,6 +224,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
             loading={<div className="p-4">Loading editor...</div>}
             onMount={handleEditorDidMount}
             onChange={handleEditorChange}
+            value={editorValue}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
