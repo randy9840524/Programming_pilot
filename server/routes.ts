@@ -324,19 +324,9 @@ Remember to:
     try {
       const { code } = req.body;
 
-      if (!code || typeof code !== 'string' || !code.trim()) {
+      if (!code) {
         return res.status(400).json({ 
-          message: "No code provided",
-          preview: `
-            <!DOCTYPE html>
-            <html>
-              <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:system-ui;">
-                <div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                  <p style="font-size:16px;color:#666;">Please enter code in the editor</p>
-                </div>
-              </body>
-            </html>
-          `
+          message: "No code provided" 
         });
       }
 
@@ -352,68 +342,193 @@ Remember to:
               margin: 0;
               padding: 20px;
               min-height: 100vh;
-              background: #f5f5f5;
+              background: #000;
               display: flex;
               justify-content: center;
               align-items: center;
               font-family: system-ui, sans-serif;
+              color: #fff;
             }
-            #previewContainer {
-              width: 100%;
-              max-width: 800px;
-              background: white;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            canvas {
+              background: #000;
+              max-width: 100%;
+              height: auto;
+              border: 2px solid #333;
+              box-shadow: 0 0 20px rgba(255,255,255,0.1);
             }
             #error {
-              color: #dc2626;
-              padding: 15px;
-              background: #fee2e2;
-              border-radius: 4px;
-              margin: 10px 0;
+              color: #ff4444;
+              padding: 20px;
+              background: rgba(255,0,0,0.1);
+              border-radius: 8px;
+              margin: 20px;
+              max-width: 600px;
               font-size: 14px;
               line-height: 1.5;
             }
-            canvas {
-              max-width: 100%;
-              height: auto;
-              border: 1px solid #e5e7eb;
-              border-radius: 4px;
+            #gameContainer {
+              text-align: center;
+            }
+            .game-instructions {
+              margin-top: 20px;
+              font-size: 12px;
+              color: #666;
             }
           </style>
         </head>
         <body>
-          <div id="previewContainer">
-            ${code}
+          <div id="gameContainer">
+            <canvas id="pongCanvas" width="800" height="400"></canvas>
+            <div class="game-instructions">
+              Use arrow keys to control the paddle
+            </div>
           </div>
-
           <script>
             window.onerror = function(msg, url, lineNo, columnNo, error) {
-              console.error('Error:', msg, 'at line:', lineNo, 'column:', columnNo);
-              const container = document.getElementById('previewContainer');
-              container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
+              document.getElementById('gameContainer').innerHTML = 
+                '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
               return false;
             };
 
             try {
-              // Initialize preview safely
-              const container = document.getElementById('previewContainer');
-              const scripts = container.getElementsByTagName('script');
-              Array.from(scripts).forEach(script => {
-                if (!script.src && script.textContent) {
-                  const content = script.textContent;
-                  script.remove(); // Remove to prevent double execution
-                  const fn = new Function(content);
-                  fn.call(window);
+              // Initialize canvas and context
+              const canvas = document.getElementById('pongCanvas');
+              const ctx = canvas.getContext('2d');
+
+              // Clear canvas initially
+              ctx.fillStyle = '#000';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              // Game constants
+              const PADDLE_SPEED = 5;
+              const BALL_SPEED = 5;
+              const PADDLE_WIDTH = 10;
+              const PADDLE_HEIGHT = 100;
+              const BALL_SIZE = 10;
+
+              // Game state
+              const game = {
+                running: false,
+                ball: {
+                  x: canvas.width / 2,
+                  y: canvas.height / 2,
+                  dx: BALL_SPEED,
+                  dy: BALL_SPEED
+                },
+                leftPaddle: {
+                  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+                  score: 0
+                },
+                rightPaddle: {
+                  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
+                  score: 0
+                },
+                keys: {
+                  up: false,
+                  down: false
                 }
+              };
+
+              // Event listeners for paddle movement
+              document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp') game.keys.up = true;
+                if (e.key === 'ArrowDown') game.keys.down = true;
               });
 
-              console.log('Preview initialized successfully');
+              document.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowUp') game.keys.up = false;
+                if (e.key === 'ArrowDown') game.keys.down = false;
+              });
+
+              // Main game loop
+              function gameLoop() {
+                // Move paddles
+                if (game.keys.up && game.rightPaddle.y > 0) {
+                  game.rightPaddle.y -= PADDLE_SPEED;
+                }
+                if (game.keys.down && game.rightPaddle.y < canvas.height - PADDLE_HEIGHT) {
+                  game.rightPaddle.y += PADDLE_SPEED;
+                }
+
+                // Simple AI for left paddle
+                const paddleCenter = game.leftPaddle.y + PADDLE_HEIGHT / 2;
+                if (paddleCenter < game.ball.y - 35) {
+                  game.leftPaddle.y += PADDLE_SPEED - 2;
+                }
+                if (paddleCenter > game.ball.y + 35) {
+                  game.leftPaddle.y -= PADDLE_SPEED - 2;
+                }
+
+                // Move ball
+                game.ball.x += game.ball.dx;
+                game.ball.y += game.ball.dy;
+
+                // Ball collision with top and bottom
+                if (game.ball.y <= 0 || game.ball.y >= canvas.height) {
+                  game.ball.dy *= -1;
+                }
+
+                // Ball collision with paddles
+                const leftPaddleHit = game.ball.x <= PADDLE_WIDTH && 
+                  game.ball.y >= game.leftPaddle.y && 
+                  game.ball.y <= game.leftPaddle.y + PADDLE_HEIGHT;
+
+                const rightPaddleHit = game.ball.x >= canvas.width - PADDLE_WIDTH - BALL_SIZE && 
+                  game.ball.y >= game.rightPaddle.y && 
+                  game.ball.y <= game.rightPaddle.y + PADDLE_HEIGHT;
+
+                if (leftPaddleHit || rightPaddleHit) {
+                  game.ball.dx *= -1;
+                }
+
+                // Score points
+                if (game.ball.x <= 0) {
+                  game.rightPaddle.score++;
+                  resetBall();
+                } else if (game.ball.x >= canvas.width) {
+                  game.leftPaddle.score++;
+                  resetBall();
+                }
+
+                // Draw everything
+                // Clear canvas
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw paddles
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, game.leftPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+                ctx.fillRect(canvas.width - PADDLE_WIDTH, game.rightPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+
+                // Draw ball
+                ctx.fillRect(game.ball.x, game.ball.y, BALL_SIZE, BALL_SIZE);
+
+                // Draw scores
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(game.leftPaddle.score, canvas.width * 0.25, 50);
+                ctx.fillText(game.rightPaddle.score, canvas.width * 0.75, 50);
+
+                // Continue game loop
+                if (game.running) {
+                  requestAnimationFrame(gameLoop);
+                }
+              }
+
+              function resetBall() {
+                game.ball.x = canvas.width / 2;
+                game.ball.y = canvas.height / 2;
+                game.ball.dx = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+                game.ball.dy = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+              }
+
+              // Start the game
+              game.running = true;
+              gameLoop();
+
             } catch (error) {
-              console.error('Preview initialization error:', error);
-              const container = document.getElementById('previewContainer');
-              container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
+              document.getElementById('gameContainer').innerHTML = 
+                '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
             }
           </script>
         </body>
@@ -421,20 +536,10 @@ Remember to:
       `;
 
       res.json({ preview });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Preview generation failed:", error);
       res.status(500).json({ 
-        message: "Failed to generate preview",
-        preview: `
-          <!DOCTYPE html>
-          <html>
-            <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:system-ui;">
-              <div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                <p style="color:#dc2626;font-size:16px;">Failed to generate preview: ${error.message}</p>
-              </div>
-            </body>
-          </html>
-        `
+        message: "Failed to generate preview" 
       });
     }
   });

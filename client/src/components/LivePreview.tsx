@@ -7,23 +7,32 @@ interface LivePreviewProps {
   isBuilding: boolean;
 }
 
+// Default Pong game code if none is provided
+const DEFAULT_GAME_CODE = `
+// Game is already initialized with canvas and context
+// Just start the game loop
+const canvas = document.getElementById('pongCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game state is already set up in game object
+// You can access: game.ball, game.leftPaddle, game.rightPaddle
+// Controls are already set up for arrow keys
+// Just start the game loop
+game.running = true;
+gameLoop();
+`;
+
 export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-
     const generatePreview = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
-
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code: code || DEFAULT_GAME_CODE }),
         });
 
         if (!response.ok) {
@@ -31,41 +40,23 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         }
 
         const data = await response.json();
-
-        if (isMounted) {
-          setPreview(data.preview);
-          setError(null);
-        }
+        setPreview(data.preview);
+        setError(null);
       } catch (err: any) {
-        if (isMounted) {
-          console.error('Preview generation error:', err);
-          setError(err.message || 'Failed to generate preview');
-          setPreview(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setError(err.message);
+        setPreview(null);
       }
     };
 
-    if (code && code.trim()) {
-      generatePreview();
-    }
-
-    return () => {
-      isMounted = false;
-    };
+    generatePreview();
   }, [code]);
 
-  if (isBuilding || isLoading) {
+  if (isBuilding) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">
-            {isBuilding ? 'Building preview...' : 'Generating preview...'}
-          </p>
+          <p className="text-sm text-muted-foreground">Building preview...</p>
         </div>
       </div>
     );
@@ -79,25 +70,10 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     );
   }
 
-  if (!code || !code.trim()) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Enter code in the editor to see preview
-          </p>
-          <p className="text-xs text-muted-foreground/60">
-            Switch to the Editor tab and start coding
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if (!preview) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Preparing preview...</p>
+        <p className="text-sm text-muted-foreground">Initializing game preview...</p>
       </div>
     );
   }
@@ -105,8 +81,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0 rounded-lg bg-background"
-      sandbox="allow-scripts allow-pointer-lock allow-same-origin"
+      className="w-full h-full border-0 rounded-lg bg-black"
+      sandbox="allow-scripts"
       title="Live Preview"
     />
   );

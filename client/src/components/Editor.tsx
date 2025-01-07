@@ -3,8 +3,9 @@ import { Editor } from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Save, Play, Code2, Eye, RefreshCcw, Share2, 
-  Terminal, GitBranch, Database, FileText
+  Save, Play, Code2, Eye, RefreshCcw, Download, Upload, 
+  Copy, Settings2, FileText, RotateCcw, Share2, Terminal,
+  Laptop, GitBranch, Database, Lock, 
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import LivePreview from "./LivePreview";
@@ -20,51 +21,90 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [activeTab, setActiveTab] = useState<string>("editor");
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
-  const [editorValue, setEditorValue] = useState<string>(`// Example: Create a simple HTML page
-const content = \`
-<!DOCTYPE html>
-<html>
-<head>
-  <title>My Preview</title>
-  <style>
-    body { 
-      font-family: system-ui; 
-      max-width: 800px; 
-      margin: 2rem auto; 
-      padding: 0 1rem;
-    }
-  </style>
-</head>
-<body>
-  <h1>Hello World</h1>
-  <p>Edit the code to see live changes!</p>
-</body>
-</html>
-\`;
-
-document.getElementById('previewContainer').innerHTML = content;
-`);
+  const [buildLog, setBuildLog] = useState<string[]>([]);
+  const [editorValue, setEditorValue] = useState<string>("");
 
   useEffect(() => {
     if (file && editorRef.current) {
+      // Load file content when file changes
       fetch(`/api/files/${encodeURIComponent(file)}`)
         .then(res => res.text())
         .then(content => {
-          if (editorRef.current) {
-            editorRef.current.setValue(content);
-            setEditorValue(content);
-          }
+          editorRef.current.setValue(content);
+          setEditorValue(content);
         })
-        .catch(error => {
-          console.error("Error loading file:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load file",
-            variant: "destructive"
-          });
-        });
+        .catch(console.error);
     }
-  }, [file, toast]);
+  }, [file]);
+
+  const handleSave = async () => {
+    if (!file || !editorRef.current) return;
+    const content = editorRef.current.getValue();
+    try {
+      const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save file");
+
+      toast({
+        title: "Success",
+        description: "File saved successfully",
+      });
+    } catch (error) {
+      console.error("Failed to save file:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBuild = async () => {
+    if (!file || !editorRef.current) return;
+    setIsBuilding(true);
+    const content = editorRef.current.getValue();
+
+    try {
+      const response = await fetch('/api/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, file }),
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      setActiveTab("preview");
+      toast({
+        title: "Build Started",
+        description: "Your changes are being built...",
+      });
+
+      // Poll build status
+      const pollStatus = setInterval(async () => {
+        const statusRes = await fetch('/api/build/status');
+        const status = await statusRes.json();
+
+        if (status.status === "complete") {
+          clearInterval(pollStatus);
+          setIsBuilding(false);
+          setBuildLog(status.logs || []);
+        }
+      }, 2000);
+
+    } catch (error) {
+      console.error("Build failed:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start build",
+        variant: "destructive",
+      });
+      setIsBuilding(false);
+    }
+  };
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -74,7 +114,6 @@ document.getElementById('previewContainer').innerHTML = content;
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
-    editor.setValue(editorValue);
   }
 
   if (!file) {
@@ -89,6 +128,7 @@ document.getElementById('previewContainer').innerHTML = content;
     <div className="h-full flex flex-col">
       <div className="border-b p-2 flex items-center justify-between bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-2">
+          {/* File Actions */}
           <div className="flex items-center gap-2 mr-4">
             <Button
               variant="outline"
@@ -116,15 +156,18 @@ document.getElementById('previewContainer').innerHTML = content;
             </Button>
           </div>
 
+          {/* Development Tools */}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
               <Terminal className="h-4 w-4" />
               Console
             </Button>
+
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Database
             </Button>
+
             <Button variant="ghost" size="sm" className="flex items-center gap-2">
               <GitBranch className="h-4 w-4" />
               Git
@@ -146,7 +189,11 @@ document.getElementById('previewContainer').innerHTML = content;
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-2"
+          >
             <Share2 className="h-4 w-4" />
             Share
           </Button>
@@ -163,16 +210,15 @@ document.getElementById('previewContainer').innerHTML = content;
         </div>
       </div>
 
-      <div className="flex-1">
-        <TabsContent value="editor" className="m-0 h-full">
+      <div className="flex-1 grid grid-cols-2 gap-4 p-4">
+        <TabsContent value="editor" className="mt-0 col-span-2 lg:col-span-1 h-full">
           <Editor
             height="100%"
-            defaultLanguage="javascript"
+            defaultLanguage="typescript"
             theme="vs-dark"
             loading={<div className="p-4">Loading editor...</div>}
             onMount={handleEditorDidMount}
             onChange={handleEditorChange}
-            value={editorValue}
             options={{
               minimap: { enabled: false },
               fontSize: 14,
@@ -185,80 +231,15 @@ document.getElementById('previewContainer').innerHTML = content;
           />
         </TabsContent>
 
-        <TabsContent value="preview" className="m-0 h-full">
-          <LivePreview code={editorValue} isBuilding={isBuilding} />
+        <TabsContent value="preview" className="mt-0 col-span-2 lg:col-span-1 h-full">
+          <LivePreview 
+            code={editorValue} 
+            isBuilding={isBuilding}
+          />
         </TabsContent>
       </div>
     </div>
   );
-}
-
-async function handleSave() {
-  if (!file || !editorRef.current) return;
-  const content = editorRef.current.getValue();
-  try {
-    const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-
-    if (!response.ok) throw new Error("Failed to save file");
-
-    toast({
-      title: "Success",
-      description: "File saved successfully",
-    });
-  } catch (error) {
-    console.error("Failed to save file:", error);
-    toast({
-      title: "Error",
-      description: "Failed to save file",
-      variant: "destructive",
-    });
-  }
-}
-
-async function handleBuild() {
-  if (!file || !editorRef.current) return;
-  setIsBuilding(true);
-  const content = editorRef.current.getValue();
-
-  try {
-    const response = await fetch('/api/build', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, file }),
-    });
-
-    if (!response.ok) throw new Error(await response.text());
-
-    setActiveTab("preview");
-    toast({
-      title: "Build Started",
-      description: "Your changes are being built...",
-    });
-
-    // Poll build status
-    const pollStatus = setInterval(async () => {
-      const statusRes = await fetch('/api/build/status');
-      const status = await statusRes.json();
-
-      if (status.status === "complete") {
-        clearInterval(pollStatus);
-        setIsBuilding(false);
-      }
-    }, 2000);
-
-  } catch (error) {
-    console.error("Build failed:", error);
-    toast({
-      title: "Error",
-      description: "Failed to start build",
-      variant: "destructive",
-    });
-    setIsBuilding(false);
-  }
 }
 
 function getLanguageFromExt(ext: string): string {
