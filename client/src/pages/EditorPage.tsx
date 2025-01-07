@@ -33,7 +33,7 @@ export default function EditorPage() {
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Top Navigation Bar */}
-      <div className="border-b p-3 flex items-center gap-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="border-b px-3 py-2 flex items-center gap-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <Button
           variant="ghost"
           size="icon"
@@ -46,23 +46,8 @@ export default function EditorPage() {
 
         <div className="flex-1 flex items-center gap-4 overflow-x-auto">
           <span className="font-bold text-lg whitespace-nowrap">CodeCraft IDE</span>
-          <ProjectSelector onSelect={(id) => setSelectedProjectId(id)} />
+          <ProjectSelector onSelect={setSelectedProjectId} />
           <CommandPalette />
-
-          <div className="flex items-center gap-2 ml-auto">
-            <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
-              <Laptop className="h-4 w-4" />
-              Environment
-            </Button>
-            <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              Console
-            </Button>
-            <Button variant="ghost" size="sm" className="hidden md:flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              Database
-            </Button>
-          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -107,7 +92,7 @@ export default function EditorPage() {
         <ResizablePanelGroup direction="horizontal">
           {showSidebar && (
             <>
-              <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
+              <ResizablePanel defaultSize={12} minSize={8} maxSize={20}>
                 <ScrollArea className="h-full border-r">
                   <FileExplorer
                     onFileSelect={setSelectedFile}
@@ -119,7 +104,7 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showRightPanel ? 40 : 85}>
+          <ResizablePanel defaultSize={showRightPanel ? 48 : 88} minSize={30}>
             <Editor
               file={selectedFile}
               onPanelToggle={() => setShowRightPanel(!showRightPanel)}
@@ -129,7 +114,7 @@ export default function EditorPage() {
           {showRightPanel && (
             <>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={45} minSize={30}>
+              <ResizablePanel defaultSize={40} minSize={25} maxSize={50}>
                 <div className="h-full">
                   {rightPanelView === 'ai' ? (
                     <AIAssistant />

@@ -2,9 +2,18 @@ import { useState, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Send, Loader2, Upload, X, Image as ImageIcon, FileText, 
-  Code2, Globe, Sparkles, Eye, Play 
+import {
+  Send,
+  Loader2,
+  Upload,
+  X,
+  Image as ImageIcon,
+  FileText,
+  Code2,
+  Globe,
+  Sparkles,
+  Eye,
+  Play,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
@@ -61,7 +70,6 @@ export default function AIAssistant() {
 
         let content: string | undefined;
         if (!file.type.startsWith('image/')) {
-          // For text files, read the content
           const textReader = new FileReader();
           content = await new Promise((resolve) => {
             textReader.onload = (e) => resolve(e.target?.result as string);
@@ -258,42 +266,42 @@ export default function AIAssistant() {
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
-      <div className="border-b p-4">
-        <h2 className="text-xl font-semibold">Design Assistant</h2>
-        <p className="text-sm text-muted-foreground">
+      <div className="border-b py-2 px-4">
+        <h2 className="text-lg font-semibold">Design Assistant</h2>
+        <p className="text-xs text-muted-foreground">
           Upload images, code, or provide screenshots to generate applications
         </p>
       </div>
 
       <Tabs defaultValue="input" className="flex-1 flex flex-col">
         <div className="border-b px-4">
-          <TabsList>
+          <TabsList className="h-9">
             <TabsTrigger value="input">Input & Analysis</TabsTrigger>
             <TabsTrigger value="preview">Live Preview</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="input" className="flex-1 flex flex-col">
-          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-            <div className="space-y-4">
+        <TabsContent value="input" className="flex-1 flex flex-col p-0">
+          <ScrollArea className="flex-1" ref={scrollAreaRef}>
+            <div className="p-4 space-y-3">
               <div {...getRootProps()} className={`
-                border-2 border-dashed rounded-lg p-8 text-center
+                border-2 border-dashed rounded-lg p-4 text-center
                 ${isDragActive ? 'border-primary bg-primary/10' : 'border-muted'}
                 hover:border-primary hover:bg-primary/5 transition-colors
                 cursor-pointer
               `}>
                 <input {...getInputProps()} />
-                <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
                   Drag and drop files here, or click to select files
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-1">
                   Supports images, code files, and text documents
                 </p>
               </div>
 
               {files.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -325,8 +333,8 @@ export default function AIAssistant() {
 
                   {files.map((file) => (
                     <Card key={file.name} className="overflow-hidden">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-4">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             {file.type.startsWith('image/') ? (
                               <ImageIcon className="h-4 w-4" />
@@ -337,9 +345,9 @@ export default function AIAssistant() {
                             ) : (
                               <FileText className="h-4 w-4" />
                             )}
-                            <span className="font-medium">{file.name}</span>
+                            <span className="font-medium text-sm">{file.name}</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -359,15 +367,15 @@ export default function AIAssistant() {
 
                         {file.type.startsWith('image/') ? (
                           <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-                            <img 
-                              src={file.url} 
+                            <img
+                              src={file.url}
                               alt={file.name}
                               className="absolute inset-0 w-full h-full object-contain"
                             />
                           </div>
                         ) : (
-                          <pre className="bg-secondary p-4 rounded-lg overflow-x-auto max-h-[300px]">
-                            <code className="text-sm">
+                          <pre className="bg-secondary p-3 rounded-lg overflow-x-auto max-h-[200px] text-xs">
+                            <code>
                               {file.content || 'Unable to preview file content'}
                             </code>
                           </pre>
@@ -379,23 +387,23 @@ export default function AIAssistant() {
               )}
 
               {messages.map((msg, i) => (
-                <div 
-                  key={i} 
-                  className={`p-3 rounded-lg ${
-                    msg.startsWith("You:") ? "bg-primary/10" : 
-                    msg.startsWith("Error:") ? "bg-destructive/10" :
-                    msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "bg-secondary/20" :
-                    msg.startsWith("AI Analysis:") ? "bg-green-100 dark:bg-green-900/20" :
-                    msg.startsWith("Preview generated:") ? "bg-blue-100 dark:bg-blue-900/20" :
-                    "bg-secondary"
+                <div
+                  key={i}
+                  className={`p-2 rounded-lg text-sm ${
+                    msg.startsWith("You:") ? "bg-primary/10" :
+                      msg.startsWith("Error:") ? "bg-destructive/10" :
+                        msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "bg-secondary/20" :
+                          msg.startsWith("AI Analysis:") ? "bg-green-100 dark:bg-green-900/20" :
+                            msg.startsWith("Preview generated:") ? "bg-blue-100 dark:bg-blue-900/20" :
+                              "bg-secondary"
                   }`}
                 >
-                  <p className={`text-sm whitespace-pre-wrap ${
+                  <p className={`whitespace-pre-wrap ${
                     msg.startsWith("Error:") ? "text-destructive" :
-                    msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "text-muted-foreground" :
-                    msg.startsWith("AI Analysis:") ? "text-green-800 dark:text-green-200" :
-                    msg.startsWith("Preview generated:") ? "text-blue-800 dark:text-blue-200" :
-                    ""
+                      msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "text-muted-foreground" :
+                        msg.startsWith("AI Analysis:") ? "text-green-800 dark:text-green-200" :
+                          msg.startsWith("Preview generated:") ? "text-blue-800 dark:text-blue-200" :
+                            ""
                   }`}>
                     {msg}
                   </p>
@@ -404,7 +412,7 @@ export default function AIAssistant() {
             </div>
           </ScrollArea>
 
-          <form onSubmit={handleSubmit} className="border-t p-4">
+          <div className="border-t p-3">
             <div className="flex gap-2">
               <Textarea
                 value={input}
@@ -418,10 +426,11 @@ export default function AIAssistant() {
                   }
                 }}
                 placeholder="Describe what you want to build or analyze..."
-                className="min-h-[80px] resize-none"
+                className="min-h-[60px] max-h-[120px] resize-none text-sm"
               />
               <Button
                 type="submit"
+                onClick={handleSubmit}
                 className={`self-end ${isLoading ? 'bg-muted' : ''}`}
                 disabled={isLoading || (!input.trim() && files.length === 0)}
               >
@@ -432,10 +441,10 @@ export default function AIAssistant() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-1">
               Press Enter to send, Shift + Enter for new line
             </p>
-          </form>
+          </div>
         </TabsContent>
 
         <TabsContent value="preview" className="flex-1 p-4">
