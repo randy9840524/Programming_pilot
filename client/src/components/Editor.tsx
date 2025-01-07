@@ -20,7 +20,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [activeTab, setActiveTab] = useState<string>("editor");
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
-  const [editorValue, setEditorValue] = useState<string>("");
+  const [editorValue, setEditorValue] = useState<string>("// Start coding here");
 
   useEffect(() => {
     if (file && editorRef.current) {
@@ -51,10 +51,8 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
-    const initialValue = editor.getValue();
-    if (initialValue) {
-      setEditorValue(initialValue);
-    }
+    const initialValue = editorRef.current.getValue() || "// Start coding here";
+    setEditorValue(initialValue);
   }
 
   if (!file) {
@@ -173,74 +171,73 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   );
 }
 
-const handleSave = async () => {
-    if (!file || !editorRef.current) return;
-    const content = editorRef.current.getValue();
-    try {
-      const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
+async function handleSave() {
+  if (!file || !editorRef.current) return;
+  const content = editorRef.current.getValue();
+  try {
+    const response = await fetch(`/api/files/${encodeURIComponent(file)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
 
-      if (!response.ok) throw new Error("Failed to save file");
+    if (!response.ok) throw new Error("Failed to save file");
 
-      toast({
-        title: "Success",
-        description: "File saved successfully",
-      });
-    } catch (error) {
-      console.error("Failed to save file:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save file",
-        variant: "destructive",
-      });
-    }
-  };
+    toast({
+      title: "Success",
+      description: "File saved successfully",
+    });
+  } catch (error) {
+    console.error("Failed to save file:", error);
+    toast({
+      title: "Error",
+      description: "Failed to save file",
+      variant: "destructive",
+    });
+  }
+}
 
-  const handleBuild = async () => {
-    if (!file || !editorRef.current) return;
-    setIsBuilding(true);
-    const content = editorRef.current.getValue();
+async function handleBuild() {
+  if (!file || !editorRef.current) return;
+  setIsBuilding(true);
+  const content = editorRef.current.getValue();
 
-    try {
-      const response = await fetch('/api/build', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, file }),
-      });
+  try {
+    const response = await fetch('/api/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, file }),
+    });
 
-      if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) throw new Error(await response.text());
 
-      setActiveTab("preview");
-      toast({
-        title: "Build Started",
-        description: "Your changes are being built...",
-      });
+    setActiveTab("preview");
+    toast({
+      title: "Build Started",
+      description: "Your changes are being built...",
+    });
 
-      // Poll build status
-      const pollStatus = setInterval(async () => {
-        const statusRes = await fetch('/api/build/status');
-        const status = await statusRes.json();
+    // Poll build status
+    const pollStatus = setInterval(async () => {
+      const statusRes = await fetch('/api/build/status');
+      const status = await statusRes.json();
 
-        if (status.status === "complete") {
-          clearInterval(pollStatus);
-          setIsBuilding(false);
-          // setBuildLog(status.logs || []); //removed as it's not used
-        }
-      }, 2000);
+      if (status.status === "complete") {
+        clearInterval(pollStatus);
+        setIsBuilding(false);
+      }
+    }, 2000);
 
-    } catch (error) {
-      console.error("Build failed:", error);
-      toast({
-        title: "Error",
-        description: "Failed to start build",
-        variant: "destructive",
-      });
-      setIsBuilding(false);
-    }
-  };
+  } catch (error) {
+    console.error("Build failed:", error);
+    toast({
+      title: "Error",
+      description: "Failed to start build",
+      variant: "destructive",
+    });
+    setIsBuilding(false);
+  }
+}
 
 function getLanguageFromExt(ext: string): string {
   const map: Record<string, string> = {

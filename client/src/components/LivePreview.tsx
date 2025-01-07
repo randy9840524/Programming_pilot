@@ -12,13 +12,57 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Default preview HTML to show when no code is provided
+  const defaultPreview = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f5f5f5;
+            color: #374151;
+          }
+          .preview-message {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .preview-heading {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+          }
+          .preview-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="preview-message">
+          <h2 class="preview-heading">Live Preview Ready</h2>
+          <p class="preview-text">Enter your code in the editor to see it in action</p>
+        </div>
+      </body>
+    </html>
+  `;
+
   useEffect(() => {
     let isMounted = true;
 
     const generatePreview = async () => {
       if (!code || !code.trim()) {
-        setPreview(null);
+        setPreview(defaultPreview);
         setError(null);
+        setIsLoading(false);
         return;
       }
 
@@ -37,15 +81,16 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         }
 
         const data = await response.json();
+
         if (isMounted) {
-          setPreview(data.preview || null);
+          setPreview(data.preview || defaultPreview);
           setError(null);
         }
       } catch (err: any) {
         if (isMounted) {
           console.error('Preview generation error:', err);
           setError(err.message || 'Failed to generate preview');
-          setPreview(null);
+          setPreview(defaultPreview);
         }
       } finally {
         if (isMounted) {
@@ -59,7 +104,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     return () => {
       isMounted = false;
     };
-  }, [code]);
+  }, [code, defaultPreview]);
 
   if (isBuilding || isLoading) {
     return (
@@ -82,32 +127,9 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     );
   }
 
-  if (!code || !code.trim()) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Enter code in the editor to see preview
-          </p>
-          <p className="text-xs text-muted-foreground/60">
-            Switch to the Editor tab and start coding
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!preview) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Preparing preview...</p>
-      </div>
-    );
-  }
-
   return (
     <iframe
-      srcDoc={preview}
+      srcDoc={preview || defaultPreview}
       className="w-full h-full border-0 rounded-lg bg-background"
       sandbox="allow-scripts allow-pointer-lock allow-same-origin"
       title="Live Preview"
