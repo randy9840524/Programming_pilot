@@ -53,8 +53,7 @@ def build_desktop():
                 icon_path = str(ico_path)
 
     # Create spec file for PyInstaller
-    spec_content = """
-# -*- mode: python ; coding: utf-8 -*-
+    spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
 
@@ -66,7 +65,7 @@ a = Analysis(
     datas=[('dist/public', 'public')],
     hiddenimports=['webview'],
     hookspath=[],
-    hooksconfig={},
+    hooksconfig={{}},
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
@@ -98,11 +97,11 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='""" + (icon_path or '') + """'
+    icon='{icon_path if icon_path else ""}'
 )
 
 # For Windows, create an installer
-if """ + str(platform_info['is_windows']) + """:
+if {platform_info['is_windows']}:
     coll = COLLECT(
         exe,
         a.binaries,
@@ -113,7 +112,7 @@ if """ + str(platform_info['is_windows']) + """:
         upx_exclude=[],
         name='Application'
     )
-"""
+'''
 
     try:
         # Write spec file
@@ -147,15 +146,15 @@ def create_windows_installer():
     """Create Windows installer using NSIS"""
     try:
         # NSIS script for creating installer
-        nsis_script = """
+        nsis_script = r'''
 !include "MUI2.nsh"
-!define APP_NAME "Web Application"
+!define APP_NAME "CodeCraft IDE"
 !define COMP_NAME "Your Company"
 !define VERSION "1.0.0"
 
 Name "${APP_NAME}"
 OutFile "Install-${APP_NAME}.exe"
-InstallDir "$PROGRAMFILES\\${APP_NAME}"
+InstallDir "$PROGRAMFILES\${APP_NAME}"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -171,22 +170,37 @@ InstallDir "$PROGRAMFILES\\${APP_NAME}"
 
 Section "Install"
     SetOutPath "$INSTDIR"
-    File /r "dist\\Application\\*.*"
+    File /r "dist\Application\*.*"
 
-    CreateDirectory "$SMPROGRAMS\\${APP_NAME}"
-    CreateShortCut "$SMPROGRAMS\\${APP_NAME}\\${APP_NAME}.lnk" "$INSTDIR\\Application.exe"
-    CreateShortCut "$DESKTOP\\${APP_NAME}.lnk" "$INSTDIR\\Application.exe"
+    CreateDirectory "$SMPROGRAMS\${APP_NAME}"
+    CreateShortCut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\Application.exe"
+    CreateShortCut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\Application.exe"
 
-    WriteUninstaller "$INSTDIR\\Uninstall.exe"
+    WriteUninstaller "$INSTDIR\Uninstall.exe"
+
+    # Add size info
+    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+    IntFmt $0 "0x%08X" $0
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "EstimatedSize" "$0"
+
+    # Add uninstall information to Add/Remove Programs
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" "$INSTDIR\Uninstall.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayIcon" "$INSTDIR\Application.exe"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "Publisher" "${COMP_NAME}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayVersion" "${VERSION}"
 SectionEnd
 
 Section "Uninstall"
     RMDir /r "$INSTDIR"
-    Delete "$SMPROGRAMS\\${APP_NAME}\\${APP_NAME}.lnk"
-    Delete "$DESKTOP\\${APP_NAME}.lnk"
-    RMDir "$SMPROGRAMS\\${APP_NAME}"
+    Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
+    Delete "$DESKTOP\${APP_NAME}.lnk"
+    RMDir "$SMPROGRAMS\${APP_NAME}"
+
+    # Remove registry entries
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
 SectionEnd
-"""
+'''
         # Write NSIS script
         with open('installer.nsi', 'w') as f:
             f.write(nsis_script)
@@ -202,7 +216,7 @@ def print_build_instructions(platform_info):
     """Print platform-specific instructions"""
     print("\nBuild Output Instructions:")
     if platform_info['is_windows']:
-        print("- The Windows installer is available as 'Install-Web-Application.exe'")
+        print("- The Windows installer is available as 'Install-CodeCraft-IDE.exe'")
         print("- You can also find the standalone executable in 'dist/Application'")
     elif platform_info['is_linux']:
         print("- The Linux executable is available in 'dist/Application'")

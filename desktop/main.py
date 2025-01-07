@@ -1,7 +1,7 @@
 import sys
 import os
-import webview
 from pathlib import Path
+import webview
 
 def get_entrypoint():
     """Get the entry point for the web application"""
@@ -23,7 +23,7 @@ def get_entrypoint():
     # Find the first valid path
     for path in possible_paths:
         if os.path.exists(path):
-            return path
+            return 'file://' + path
 
     raise FileNotFoundError(
         "Could not find the application entry point. "
@@ -33,7 +33,7 @@ def get_entrypoint():
 def main():
     try:
         # Get application name from environment or use default
-        app_name = os.environ.get('APP_NAME', 'Web Application')
+        app_name = os.environ.get('APP_NAME', 'CodeCraft IDE')
 
         # Set up the window configuration
         window = webview.create_window(
@@ -45,6 +45,9 @@ def main():
             resizable=True,
             frameless=False,
             easy_drag=True,
+            text_select=True,
+            confirm_close=True,
+            background_color='#FFFFFF'
         )
 
         # Start the application

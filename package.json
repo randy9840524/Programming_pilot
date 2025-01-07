@@ -11,6 +11,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@electron/remote": "^2.1.2",
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@monaco-editor/react": "^4.6.0",
@@ -51,6 +52,10 @@
     "docx": "^9.1.0",
     "drizzle-orm": "^0.38.2",
     "drizzle-zod": "^0.6.0",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "electron-serve": "^2.1.1",
+    "electron-store": "^10.0.0",
     "embla-carousel-react": "^8.3.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
