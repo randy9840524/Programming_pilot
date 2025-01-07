@@ -3,13 +3,54 @@ import sys
 import shutil
 from pathlib import Path
 import subprocess
+import platform
+from PIL import Image
+import cairosvg
+import io
+
+def get_platform():
+    """Get current platform information"""
+    system = platform.system().lower()
+    return {
+        'is_windows': system == 'windows',
+        'is_linux': system == 'linux',
+        'is_mac': system == 'darwin',
+        'system': system
+    }
+
+def create_ico_from_svg(svg_path, output_path):
+    """Convert SVG to ICO format for Windows"""
+    try:
+        # Convert SVG to PNG in memory
+        png_data = cairosvg.svg2png(url=svg_path, output_width=256, output_height=256)
+
+        # Open PNG from memory buffer
+        img = Image.open(io.BytesIO(png_data))
+
+        # Create ICO file with multiple sizes
+        icon_sizes = [(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)]
+        img.save(output_path, format='ICO', sizes=icon_sizes)
+        return True
+    except Exception as e:
+        print(f"Warning: Failed to create icon: {str(e)}")
+        return False
 
 def build_desktop():
-    """Build desktop executable"""
+    """Build desktop executable with installer"""
     print("Starting desktop build...")
+    platform_info = get_platform()
 
     # First build the web application
     build_web()
+
+    # Create icon if needed
+    icon_path = None
+    if platform_info['is_windows']:
+        svg_icon = Path('assets/icon.svg')
+        if svg_icon.exists():
+            ico_path = Path('assets/icon.ico')
+            if create_ico_from_svg(str(svg_icon), str(ico_path)):
+                icon_path = str(ico_path)
 
     # Create spec file for PyInstaller
     spec_content = """
@@ -17,6 +58,7 @@ def build_desktop():
 
 block_cipher = None
 
+# Analyze the web application
 a = Analysis(
     ['desktop/main.py'],
     pathex=[],
@@ -33,6 +75,7 @@ a = Analysis(
     noarchive=False
 )
 
+# Create the executable
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -42,7 +85,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='CodeCraft-IDE',
+    name='Application',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -55,26 +98,118 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='""" + (icon_path or '') + """'
 )
+
+# For Windows, create an installer
+if """ + str(platform_info['is_windows']) + """:
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        name='Application'
+    )
 """
 
     try:
         # Write spec file
-        with open('CodeCraft-IDE.spec', 'w') as f:
+        with open('Application.spec', 'w') as f:
             f.write(spec_content)
 
         # Run PyInstaller
-        subprocess.run([
+        pyinstaller_args = [
             'pyinstaller',
             '--clean',
             '--noconfirm',
-            'CodeCraft-IDE.spec'
-        ], check=True)
+            'Application.spec'
+        ]
 
-        print("Desktop build completed! Executable is in the dist folder.")
+        if platform_info['is_windows']:
+            pyinstaller_args.extend(['--windowed'])
+
+        subprocess.run(pyinstaller_args, check=True)
+
+        # Create installer if on Windows
+        if platform_info['is_windows']:
+            create_windows_installer()
+
+        print("Desktop build completed! Files are in the dist folder.")
+        print_build_instructions(platform_info)
     except Exception as e:
         print(f"Error during desktop build: {str(e)}")
         sys.exit(1)
+
+def create_windows_installer():
+    """Create Windows installer using NSIS"""
+    try:
+        # NSIS script for creating installer
+        nsis_script = """
+!include "MUI2.nsh"
+!define APP_NAME "Web Application"
+!define COMP_NAME "Your Company"
+!define VERSION "1.0.0"
+
+Name "${APP_NAME}"
+OutFile "Install-${APP_NAME}.exe"
+InstallDir "$PROGRAMFILES\\${APP_NAME}"
+
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+!insertmacro MUI_LANGUAGE "English"
+
+Section "Install"
+    SetOutPath "$INSTDIR"
+    File /r "dist\\Application\\*.*"
+
+    CreateDirectory "$SMPROGRAMS\\${APP_NAME}"
+    CreateShortCut "$SMPROGRAMS\\${APP_NAME}\\${APP_NAME}.lnk" "$INSTDIR\\Application.exe"
+    CreateShortCut "$DESKTOP\\${APP_NAME}.lnk" "$INSTDIR\\Application.exe"
+
+    WriteUninstaller "$INSTDIR\\Uninstall.exe"
+SectionEnd
+
+Section "Uninstall"
+    RMDir /r "$INSTDIR"
+    Delete "$SMPROGRAMS\\${APP_NAME}\\${APP_NAME}.lnk"
+    Delete "$DESKTOP\\${APP_NAME}.lnk"
+    RMDir "$SMPROGRAMS\\${APP_NAME}"
+SectionEnd
+"""
+        # Write NSIS script
+        with open('installer.nsi', 'w') as f:
+            f.write(nsis_script)
+
+        # Run NSIS compiler
+        subprocess.run(['makensis', 'installer.nsi'], check=True)
+        print("Windows installer created successfully!")
+    except Exception as e:
+        print(f"Error creating Windows installer: {str(e)}")
+        print("Installer creation skipped. You can still use the executable from the dist folder.")
+
+def print_build_instructions(platform_info):
+    """Print platform-specific instructions"""
+    print("\nBuild Output Instructions:")
+    if platform_info['is_windows']:
+        print("- The Windows installer is available as 'Install-Web-Application.exe'")
+        print("- You can also find the standalone executable in 'dist/Application'")
+    elif platform_info['is_linux']:
+        print("- The Linux executable is available in 'dist/Application'")
+        print("- Run it using './dist/Application/Application'")
+    elif platform_info['is_mac']:
+        print("- The macOS application is available in 'dist/Application.app'")
+        print("- You can copy it to your Applications folder")
 
 def build_web():
     """Build web application"""
