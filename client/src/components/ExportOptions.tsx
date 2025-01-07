@@ -6,18 +6,22 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Download, Globe } from "lucide-react";
+import { Download, Globe, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ExportOptions() {
   const [isExporting, setIsExporting] = useState(false);
+  const [exportType, setExportType] = useState<'web' | 'desktop' | null>(null);
   const { toast } = useToast();
 
   const handleExport = async (type: 'web' | 'desktop') => {
     try {
       setIsExporting(true);
+      setExportType(type);
+
       const response = await fetch(`/api/export/${type}`, {
         method: 'POST',
       });
@@ -32,29 +36,35 @@ export default function ExportOptions() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'pong-game.exe';
+        a.download = 'game-app.zip';
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         a.remove();
+
+        toast({
+          title: "Success",
+          description: "Desktop application package downloaded successfully! Extract the zip file and run the executable inside.",
+        });
       } else {
         // For web deployment, we receive a deployment URL
         const { url } = await response.json();
         window.open(url, '_blank');
-      }
 
-      toast({
-        title: "Success",
-        description: `${type === 'web' ? 'Web deployment' : 'Desktop export'} completed successfully!`,
-      });
+        toast({
+          title: "Success",
+          description: "Web deployment completed! Opening deployment URL in a new tab.",
+        });
+      }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Export Failed",
+        description: error.message || "Failed to export application",
         variant: "destructive",
       });
     } finally {
       setIsExporting(false);
+      setExportType(null);
     }
   };
 
@@ -65,23 +75,30 @@ export default function ExportOptions() {
           <Download className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Export Options</DialogTitle>
+          <DialogDescription>
+            Choose how you want to deploy or package your application
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <Card className="p-4">
             <h3 className="font-medium mb-2">Web Deployment</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Deploy your game to a web server for online access
+              Deploy your game as a web application for online access
             </p>
             <Button
               onClick={() => handleExport('web')}
               disabled={isExporting}
               className="w-full"
             >
-              <Globe className="mr-2 h-4 w-4" />
-              Deploy to Web
+              {isExporting && exportType === 'web' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Globe className="mr-2 h-4 w-4" />
+              )}
+              {isExporting && exportType === 'web' ? 'Deploying...' : 'Deploy to Web'}
             </Button>
           </Card>
 
@@ -95,8 +112,12 @@ export default function ExportOptions() {
               disabled={isExporting}
               className="w-full"
             >
-              <Download className="mr-2 h-4 w-4" />
-              Create Executable
+              {isExporting && exportType === 'desktop' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isExporting && exportType === 'desktop' ? 'Creating Package...' : 'Create Executable'}
             </Button>
           </Card>
         </div>
