@@ -14,7 +14,14 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
 
   useEffect(() => {
     let isMounted = true;
+
     const generatePreview = async () => {
+      if (!code || !code.trim()) {
+        setPreview(null);
+        setError(null);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
@@ -22,7 +29,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code: code.trim() }),
         });
 
         if (!response.ok) {
@@ -30,14 +37,14 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         }
 
         const data = await response.json();
-        if (data.preview && isMounted) {
-          setPreview(data.preview);
-        } else if (isMounted) {
-          setError('No preview content received');
+        if (isMounted) {
+          setPreview(data.preview || null);
+          setError(null);
         }
       } catch (err: any) {
         if (isMounted) {
-          setError(err.message);
+          console.error('Preview generation error:', err);
+          setError(err.message || 'Failed to generate preview');
           setPreview(null);
         }
       } finally {
@@ -47,14 +54,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       }
     };
 
-    // Generate preview when code changes and is not empty
-    if (code && code.trim()) {
-      generatePreview();
-    } else {
-      setPreview(null);
-      setError(null);
-      setIsLoading(false);
-    }
+    generatePreview();
 
     return () => {
       isMounted = false;
@@ -85,7 +85,14 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   if (!code || !code.trim()) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Enter code in the editor to see preview</p>
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Enter code in the editor to see preview
+          </p>
+          <p className="text-xs text-muted-foreground/60">
+            Switch to the Editor tab and start coding
+          </p>
+        </div>
       </div>
     );
   }

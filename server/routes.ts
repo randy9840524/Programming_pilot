@@ -324,7 +324,7 @@ Remember to:
     try {
       const { code } = req.body;
 
-      if (!code || typeof code !== 'string') {
+      if (!code || typeof code !== 'string' || !code.trim()) {
         return res.status(400).json({ 
           message: "No code provided",
           preview: `
@@ -387,37 +387,31 @@ Remember to:
           <div id="previewContainer">
             ${code}
           </div>
+
           <script>
             window.onerror = function(msg, url, lineNo, columnNo, error) {
+              console.error('Error:', msg, 'at line:', lineNo, 'column:', columnNo);
               const container = document.getElementById('previewContainer');
               container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
               return false;
             };
 
-            // Create a safe eval context
-            const safeEval = (code) => {
-              try {
-                const fn = new Function(code);
-                fn.call(window);
-              } catch (error) {
-                throw error;
-              }
-            };
-
             try {
-              // Extract and execute scripts safely
-              const codeContainer = document.getElementById('previewContainer');
-              const scripts = codeContainer.getElementsByTagName('script');
+              // Initialize preview safely
+              const container = document.getElementById('previewContainer');
+              const scripts = container.getElementsByTagName('script');
               Array.from(scripts).forEach(script => {
                 if (!script.src && script.textContent) {
-                  // Remove the script to prevent double execution
-                  script.remove();
-                  safeEval(script.textContent);
+                  const content = script.textContent;
+                  script.remove(); // Remove to prevent double execution
+                  const fn = new Function(content);
+                  fn.call(window);
                 }
               });
 
               console.log('Preview initialized successfully');
             } catch (error) {
+              console.error('Preview initialization error:', error);
               const container = document.getElementById('previewContainer');
               container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
             }
