@@ -72,7 +72,11 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       className="w-full h-full border-0 rounded-lg"
       sandbox="allow-scripts"
       title="Live Preview"
-      style={{ backgroundColor: '#000' }}
+      style={{ 
+        backgroundColor: '#000',
+        width: '100%',
+        height: '100%'
+      }}
     />
   );
 }

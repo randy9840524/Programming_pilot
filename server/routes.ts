@@ -330,7 +330,7 @@ Remember to:
         });
       }
 
-      // Create a basic HTML preview with game support
+      // Create a basic HTML preview with proper game setup
       const preview = `
         <!DOCTYPE html>
         <html>
@@ -340,17 +340,27 @@ Remember to:
           <style>
             body {
               margin: 0;
-              padding: 1rem;
+              padding: 20px;
               min-height: 100vh;
               background: #000;
               display: flex;
               justify-content: center;
               align-items: center;
+              font-family: system-ui, sans-serif;
             }
             canvas {
               background: #000;
               max-width: 100%;
               height: auto;
+              border: 2px solid #333;
+            }
+            #error {
+              color: #ff4444;
+              padding: 20px;
+              background: rgba(255,0,0,0.1);
+              border-radius: 8px;
+              margin: 20px;
+              max-width: 600px;
             }
           </style>
         </head>
@@ -359,15 +369,29 @@ Remember to:
             <canvas id="pongCanvas" width="800" height="400"></canvas>
           </div>
           <script>
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+              document.getElementById('gameContainer').innerHTML = 
+                '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
+              return false;
+            };
+
             try {
+              // Initialize canvas and context
+              const canvas = document.getElementById('pongCanvas');
+              const ctx = canvas.getContext('2d');
+
+              // Game code
               ${code}
+
               // Auto-start the game if init function exists
               if (typeof init === 'function') {
                 init();
+              } else if (typeof startGame === 'function') {
+                startGame();
               }
             } catch (error) {
               document.getElementById('gameContainer').innerHTML = 
-                '<div style="color: red; padding: 20px;">' + error.message + '</div>';
+                '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
             }
           </script>
         </body>
