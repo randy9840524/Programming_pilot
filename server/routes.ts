@@ -330,43 +330,43 @@ Remember to:
         });
       }
 
-      // Create a basic HTML preview with React and Tailwind
+      // Create a basic HTML preview with game support
       const preview = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script src="https://cdn.tailwindcss.com"></script>
           <style>
             body {
               margin: 0;
               padding: 1rem;
               min-height: 100vh;
-              background: transparent;
+              background: #000;
+              display: flex;
+              justify-content: center;
+              align-items: center;
             }
-            #root {
-              height: 100%;
+            canvas {
+              background: #000;
+              max-width: 100%;
+              height: auto;
             }
           </style>
         </head>
         <body>
-          <div id="root"></div>
-          <script type="module">
-            import React from 'https://esm.sh/react@18.2.0';
-            import ReactDOM from 'https://esm.sh/react-dom@18.2.0';
-            import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
-
+          <div id="gameContainer">
+            <canvas id="pongCanvas" width="800" height="400"></canvas>
+          </div>
+          <script>
             try {
-              const code = \`${code}\`;
-              const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-              const AsyncComponent = new AsyncFunction('React', code);
-              const Component = await AsyncComponent(React);
-
-              const root = createRoot(document.getElementById('root'));
-              root.render(React.createElement(Component.default || Component));
+              ${code}
+              // Auto-start the game if init function exists
+              if (typeof init === 'function') {
+                init();
+              }
             } catch (error) {
-              document.getElementById('root').innerHTML = 
+              document.getElementById('gameContainer').innerHTML = 
                 '<div style="color: red; padding: 20px;">' + error.message + '</div>';
             }
           </script>
