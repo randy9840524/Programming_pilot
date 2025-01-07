@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, Settings, Terminal, Code2, Play, Save, RefreshCw, Database, Laptop, FileText, Layers } from "lucide-react";
+import { Menu, Settings } from "lucide-react";
 import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
-import ArtifactManager from "@/components/ArtifactManager";
 import ProjectSelector from "@/components/ProjectSelector";
 import { useMobile } from "@/hooks/use-mobile";
 
@@ -30,6 +29,10 @@ export default function EditorPage() {
     }
   }, [isMobile]);
 
+  const handleProjectSelect = (projectId: number | null) => {
+    setSelectedProjectId(projectId);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
       {/* Top Navigation Bar */}
@@ -46,7 +49,7 @@ export default function EditorPage() {
 
         <div className="flex-1 flex items-center gap-4 overflow-x-auto">
           <span className="font-bold text-lg whitespace-nowrap">CodeCraft IDE</span>
-          <ProjectSelector onSelect={setSelectedProjectId} />
+          <ProjectSelector onSelect={handleProjectSelect} />
           <CommandPalette />
         </div>
 
@@ -59,28 +62,6 @@ export default function EditorPage() {
           >
             {showRightPanel ? "Hide Panel" : "Show Panel"}
           </Button>
-          {showRightPanel && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant={rightPanelView === 'ai' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setRightPanelView('ai')}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                AI Assistant
-              </Button>
-              <Button
-                variant={rightPanelView === 'artifacts' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setRightPanelView('artifacts')}
-                className="flex items-center gap-2"
-              >
-                <Layers className="h-4 w-4" />
-                Artifacts
-              </Button>
-            </div>
-          )}
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
           </Button>
@@ -92,7 +73,7 @@ export default function EditorPage() {
         <ResizablePanelGroup direction="horizontal">
           {showSidebar && (
             <>
-              <ResizablePanel defaultSize={12} minSize={8} maxSize={20}>
+              <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
                 <ScrollArea className="h-full border-r">
                   <FileExplorer
                     onFileSelect={setSelectedFile}
@@ -104,23 +85,19 @@ export default function EditorPage() {
             </>
           )}
 
-          <ResizablePanel defaultSize={showRightPanel ? 48 : 88} minSize={30}>
+          <ResizablePanel defaultSize={showRightPanel ? 45 : 85} minSize={30}>
             <Editor
               file={selectedFile}
-              onPanelToggle={() => setShowRightPanel(!showRightPanel)}
+              onAIToggle={() => setShowRightPanel(!showRightPanel)}
             />
           </ResizablePanel>
 
           {showRightPanel && (
             <>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={40} minSize={25} maxSize={50}>
+              <ResizablePanel defaultSize={40} minSize={30} maxSize={50}>
                 <div className="h-full">
-                  {rightPanelView === 'ai' ? (
-                    <AIAssistant />
-                  ) : (
-                    <ArtifactManager projectId={selectedProjectId || 0} />
-                  )}
+                  <AIAssistant />
                 </div>
               </ResizablePanel>
             </>
