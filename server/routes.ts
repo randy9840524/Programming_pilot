@@ -326,7 +326,17 @@ Remember to:
 
       if (!code) {
         return res.status(400).json({ 
-          message: "No code provided" 
+          message: "No code provided",
+          preview: `
+            <!DOCTYPE html>
+            <html>
+              <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#000;color:#fff;font-family:system-ui;">
+                <div style="text-align:center;">
+                  <p style="font-size:16px;color:#666;">No code to preview</p>
+                </div>
+              </body>
+            </html>
+          `
         });
       }
 
@@ -371,8 +381,8 @@ Remember to:
             }
             .game-instructions {
               margin-top: 20px;
-              font-size: 12px;
-              color: #666;
+              font-size: 14px;
+              color: #888;
             }
           </style>
         </head>
@@ -380,7 +390,7 @@ Remember to:
           <div id="gameContainer">
             <canvas id="pongCanvas" width="800" height="400"></canvas>
             <div class="game-instructions">
-              Use arrow keys to control the paddle
+              Use arrow keys to control the right paddle
             </div>
           </div>
           <script>
@@ -391,141 +401,7 @@ Remember to:
             };
 
             try {
-              // Initialize canvas and context
-              const canvas = document.getElementById('pongCanvas');
-              const ctx = canvas.getContext('2d');
-
-              // Clear canvas initially
-              ctx.fillStyle = '#000';
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-              // Game constants
-              const PADDLE_SPEED = 5;
-              const BALL_SPEED = 5;
-              const PADDLE_WIDTH = 10;
-              const PADDLE_HEIGHT = 100;
-              const BALL_SIZE = 10;
-
-              // Game state
-              const game = {
-                running: false,
-                ball: {
-                  x: canvas.width / 2,
-                  y: canvas.height / 2,
-                  dx: BALL_SPEED,
-                  dy: BALL_SPEED
-                },
-                leftPaddle: {
-                  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
-                  score: 0
-                },
-                rightPaddle: {
-                  y: canvas.height / 2 - PADDLE_HEIGHT / 2,
-                  score: 0
-                },
-                keys: {
-                  up: false,
-                  down: false
-                }
-              };
-
-              // Event listeners for paddle movement
-              document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowUp') game.keys.up = true;
-                if (e.key === 'ArrowDown') game.keys.down = true;
-              });
-
-              document.addEventListener('keyup', (e) => {
-                if (e.key === 'ArrowUp') game.keys.up = false;
-                if (e.key === 'ArrowDown') game.keys.down = false;
-              });
-
-              // Main game loop
-              function gameLoop() {
-                // Move paddles
-                if (game.keys.up && game.rightPaddle.y > 0) {
-                  game.rightPaddle.y -= PADDLE_SPEED;
-                }
-                if (game.keys.down && game.rightPaddle.y < canvas.height - PADDLE_HEIGHT) {
-                  game.rightPaddle.y += PADDLE_SPEED;
-                }
-
-                // Simple AI for left paddle
-                const paddleCenter = game.leftPaddle.y + PADDLE_HEIGHT / 2;
-                if (paddleCenter < game.ball.y - 35) {
-                  game.leftPaddle.y += PADDLE_SPEED - 2;
-                }
-                if (paddleCenter > game.ball.y + 35) {
-                  game.leftPaddle.y -= PADDLE_SPEED - 2;
-                }
-
-                // Move ball
-                game.ball.x += game.ball.dx;
-                game.ball.y += game.ball.dy;
-
-                // Ball collision with top and bottom
-                if (game.ball.y <= 0 || game.ball.y >= canvas.height) {
-                  game.ball.dy *= -1;
-                }
-
-                // Ball collision with paddles
-                const leftPaddleHit = game.ball.x <= PADDLE_WIDTH && 
-                  game.ball.y >= game.leftPaddle.y && 
-                  game.ball.y <= game.leftPaddle.y + PADDLE_HEIGHT;
-
-                const rightPaddleHit = game.ball.x >= canvas.width - PADDLE_WIDTH - BALL_SIZE && 
-                  game.ball.y >= game.rightPaddle.y && 
-                  game.ball.y <= game.rightPaddle.y + PADDLE_HEIGHT;
-
-                if (leftPaddleHit || rightPaddleHit) {
-                  game.ball.dx *= -1;
-                }
-
-                // Score points
-                if (game.ball.x <= 0) {
-                  game.rightPaddle.score++;
-                  resetBall();
-                } else if (game.ball.x >= canvas.width) {
-                  game.leftPaddle.score++;
-                  resetBall();
-                }
-
-                // Draw everything
-                // Clear canvas
-                ctx.fillStyle = '#000';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                // Draw paddles
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, game.leftPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-                ctx.fillRect(canvas.width - PADDLE_WIDTH, game.rightPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-
-                // Draw ball
-                ctx.fillRect(game.ball.x, game.ball.y, BALL_SIZE, BALL_SIZE);
-
-                // Draw scores
-                ctx.font = '48px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(game.leftPaddle.score, canvas.width * 0.25, 50);
-                ctx.fillText(game.rightPaddle.score, canvas.width * 0.75, 50);
-
-                // Continue game loop
-                if (game.running) {
-                  requestAnimationFrame(gameLoop);
-                }
-              }
-
-              function resetBall() {
-                game.ball.x = canvas.width / 2;
-                game.ball.y = canvas.height / 2;
-                game.ball.dx = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
-                game.ball.dy = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
-              }
-
-              // Start the game
-              game.running = true;
-              gameLoop();
-
+              ${code}
             } catch (error) {
               document.getElementById('gameContainer').innerHTML = 
                 '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
@@ -539,7 +415,17 @@ Remember to:
     } catch (error) {
       console.error("Preview generation failed:", error);
       res.status(500).json({ 
-        message: "Failed to generate preview" 
+        message: "Failed to generate preview",
+        preview: `
+          <!DOCTYPE html>
+          <html>
+            <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#000;color:#ff4444;font-family:system-ui;">
+              <div style="text-align:center;">
+                <p style="font-size:16px;">Failed to generate preview: ${error.message}</p>
+              </div>
+            </body>
+          </html>
+        `
       });
     }
   });

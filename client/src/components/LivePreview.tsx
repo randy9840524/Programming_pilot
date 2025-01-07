@@ -7,21 +7,6 @@ interface LivePreviewProps {
   isBuilding: boolean;
 }
 
-// Default Pong game code if none is provided
-const DEFAULT_GAME_CODE = `
-// Game is already initialized with canvas and context
-// Just start the game loop
-const canvas = document.getElementById('pongCanvas');
-const ctx = canvas.getContext('2d');
-
-// Game state is already set up in game object
-// You can access: game.ball, game.leftPaddle, game.rightPaddle
-// Controls are already set up for arrow keys
-// Just start the game loop
-game.running = true;
-gameLoop();
-`;
-
 export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +17,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: code || DEFAULT_GAME_CODE }),
+          body: JSON.stringify({ code: code || '' }),
         });
 
         if (!response.ok) {
@@ -48,7 +33,9 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       }
     };
 
-    generatePreview();
+    if (code) {
+      generatePreview();
+    }
   }, [code]);
 
   if (isBuilding) {
@@ -73,7 +60,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   if (!preview) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Initializing game preview...</p>
+        <p className="text-sm text-muted-foreground">No preview available</p>
       </div>
     );
   }
@@ -81,8 +68,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0 rounded-lg bg-black"
-      sandbox="allow-scripts"
+      className="w-full h-full border-0 rounded-lg"
+      sandbox="allow-scripts allow-pointer-lock allow-same-origin"
       title="Live Preview"
     />
   );
