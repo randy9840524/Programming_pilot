@@ -9,6 +9,7 @@ import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
 import ProjectSelector from "@/components/ProjectSelector";
 import { useMobile } from "@/hooks/use-mobile";
+import ExportOptions from "@/components/ExportOptions";
 
 type RightPanelView = 'ai' | 'artifacts';
 
@@ -53,6 +54,7 @@ export default function EditorPage() {
           <CommandPalette />
         </div>
 
+        <ExportOptions />
         <Button variant="ghost" size="icon">
           <Settings className="h-5 w-5" />
         </Button>
