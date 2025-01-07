@@ -26,7 +26,6 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
   useEffect(() => {
     if (file && editorRef.current) {
-      // Load file content when file changes
       fetch(`/api/files/${encodeURIComponent(file)}`)
         .then(res => res.text())
         .then(content => {
@@ -194,11 +193,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         </Tabs>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-2"
-          >
+          <Button variant="ghost" size="sm" className="flex items-center gap-2">
             <Share2 className="h-4 w-4" />
             Share
           </Button>
@@ -215,8 +210,8 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-2 gap-4 p-4">
-        <TabsContent value="editor" className="mt-0 col-span-2 lg:col-span-1 h-full">
+      <div className="flex-1">
+        <TabsContent value="editor" className="m-0 h-full">
           <Editor
             height="100%"
             defaultLanguage="typescript"
@@ -237,11 +232,8 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           />
         </TabsContent>
 
-        <TabsContent value="preview" className="mt-0 col-span-2 lg:col-span-1 h-full">
-          <LivePreview 
-            code={editorValue} 
-            isBuilding={isBuilding}
-          />
+        <TabsContent value="preview" className="m-0 h-full">
+          <LivePreview code={editorValue} isBuilding={isBuilding} />
         </TabsContent>
       </div>
     </div>
