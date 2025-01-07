@@ -20,7 +20,32 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [activeTab, setActiveTab] = useState<string>("editor");
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
-  const [editorValue, setEditorValue] = useState<string>("// Start coding here");
+  const [editorValue, setEditorValue] = useState<string>(`
+// Start coding here
+// Example: Create a simple HTML page
+const content = \`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Preview</title>
+  <style>
+    body { 
+      font-family: system-ui; 
+      max-width: 800px; 
+      margin: 2rem auto; 
+      padding: 0 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hello World</h1>
+  <p>Edit the code to see live changes!</p>
+</body>
+</html>
+\`;
+
+document.getElementById('previewContainer').innerHTML = content;
+`);
 
   useEffect(() => {
     if (file && editorRef.current) {
@@ -51,8 +76,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
-    const initialValue = editorRef.current.getValue() || "// Start coding here";
-    setEditorValue(initialValue);
+    editor.setValue(editorValue); // Ensure initial value is set
   }
 
   if (!file) {
@@ -145,7 +169,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         <TabsContent value="editor" className="m-0 h-full">
           <Editor
             height="100%"
-            defaultLanguage="typescript"
+            defaultLanguage="javascript"
             theme="vs-dark"
             loading={<div className="p-4">Loading editor...</div>}
             onMount={handleEditorDidMount}
