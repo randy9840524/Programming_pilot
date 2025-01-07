@@ -330,7 +330,7 @@ Remember to:
         });
       }
 
-      // Create a basic HTML preview with proper game setup
+      // Create a basic HTML preview with proper game setup and error handling
       const preview = `
         <!DOCTYPE html>
         <html>
@@ -347,12 +347,14 @@ Remember to:
               justify-content: center;
               align-items: center;
               font-family: system-ui, sans-serif;
+              color: #fff;
             }
             canvas {
               background: #000;
               max-width: 100%;
               height: auto;
               border: 2px solid #333;
+              box-shadow: 0 0 20px rgba(255,255,255,0.1);
             }
             #error {
               color: #ff4444;
@@ -361,12 +363,25 @@ Remember to:
               border-radius: 8px;
               margin: 20px;
               max-width: 600px;
+              font-size: 14px;
+              line-height: 1.5;
+            }
+            #gameContainer {
+              text-align: center;
+            }
+            .game-instructions {
+              margin-top: 20px;
+              font-size: 12px;
+              color: #666;
             }
           </style>
         </head>
         <body>
           <div id="gameContainer">
             <canvas id="pongCanvas" width="800" height="400"></canvas>
+            <div class="game-instructions">
+              Use arrow keys to control the paddle
+            </div>
           </div>
           <script>
             window.onerror = function(msg, url, lineNo, columnNo, error) {
@@ -380,15 +395,32 @@ Remember to:
               const canvas = document.getElementById('pongCanvas');
               const ctx = canvas.getContext('2d');
 
+              // Clear canvas initially
+              ctx.fillStyle = '#000';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              // Set up game variables
+              const gameState = {
+                running: false,
+                score: 0,
+                canvas: canvas,
+                ctx: ctx
+              };
+
               // Game code
               ${code}
 
-              // Auto-start the game if init function exists
+              // Auto-start the game if init/start function exists
               if (typeof init === 'function') {
                 init();
               } else if (typeof startGame === 'function') {
                 startGame();
+              } else if (typeof game === 'function') {
+                game();
               }
+
+              // Set running state
+              gameState.running = true;
             } catch (error) {
               document.getElementById('gameContainer').innerHTML = 
                 '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
