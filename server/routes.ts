@@ -324,7 +324,7 @@ Remember to:
     try {
       const { code } = req.body;
 
-      if (!code) {
+      if (!code || typeof code !== 'string') {
         return res.status(400).json({ 
           message: "No code provided",
           preview: `
@@ -332,7 +332,7 @@ Remember to:
             <html>
               <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:system-ui;">
                 <div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                  <p style="font-size:16px;color:#666;">No code to preview</p>
+                  <p style="font-size:16px;color:#666;">Please enter code in the editor</p>
                 </div>
               </body>
             </html>
@@ -389,7 +389,14 @@ Remember to:
             };
 
             try {
-              // Any additional initialization code can go here
+              // Execute any script tags in the preview
+              const scripts = document.getElementsByTagName('script');
+              Array.from(scripts).forEach(script => {
+                if (!script.src && script.textContent) {
+                  eval(script.textContent);
+                }
+              });
+
               console.log('Preview initialized successfully');
             } catch (error) {
               const container = document.getElementById('previewContainer');
@@ -401,7 +408,7 @@ Remember to:
       `;
 
       res.json({ preview });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Preview generation failed:", error);
       res.status(500).json({ 
         message: "Failed to generate preview",

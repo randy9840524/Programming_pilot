@@ -10,16 +10,18 @@ interface LivePreviewProps {
 export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const generatePreview = async () => {
       try {
+        setIsLoading(true);
         setError(null);
 
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: code || '' }),
+          body: JSON.stringify({ code }),
         });
 
         if (!response.ok) {
@@ -35,24 +37,29 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       } catch (err: any) {
         setError(err.message);
         setPreview(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Only generate preview if we have code
+    // Generate preview when code changes and is not empty
     if (code && code.trim()) {
       generatePreview();
     } else {
       setPreview(null);
       setError(null);
+      setIsLoading(false);
     }
   }, [code]);
 
-  if (isBuilding) {
+  if (isBuilding || isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Building preview...</p>
+          <p className="text-sm text-muted-foreground">
+            {isBuilding ? 'Building preview...' : 'Generating preview...'}
+          </p>
         </div>
       </div>
     );
@@ -66,10 +73,18 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     );
   }
 
+  if (!code || !code.trim()) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Enter code in the editor to see preview</p>
+      </div>
+    );
+  }
+
   if (!preview) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Enter code to see preview</p>
+        <p className="text-sm text-muted-foreground">Preparing preview...</p>
       </div>
     );
   }
