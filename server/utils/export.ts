@@ -55,5 +55,15 @@ export async function cleanupTempDir(tempDir: string): Promise<void> {
 }
 
 export function getWebDeploymentUrl(): string {
-  return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+  // Construct the Replit URL properly using the environment variables
+  const replId = process.env.REPL_ID;
+  const replOwner = process.env.REPL_OWNER;
+  const replSlug = process.env.REPL_SLUG;
+
+  if (!replOwner || !replSlug) {
+    throw new Error("Missing Replit environment variables");
+  }
+
+  // Use the proper Replit URL format
+  return `https://${replSlug}.${replOwner}.repl.co`;
 }
