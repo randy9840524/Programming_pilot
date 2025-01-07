@@ -375,6 +375,12 @@ Remember to:
               font-size: 14px;
               line-height: 1.5;
             }
+            canvas {
+              max-width: 100%;
+              height: auto;
+              border: 1px solid #e5e7eb;
+              border-radius: 4px;
+            }
           </style>
         </head>
         <body>
@@ -388,12 +394,25 @@ Remember to:
               return false;
             };
 
+            // Create a safe eval context
+            const safeEval = (code) => {
+              try {
+                const fn = new Function(code);
+                fn.call(window);
+              } catch (error) {
+                throw error;
+              }
+            };
+
             try {
-              // Execute any script tags in the preview
-              const scripts = document.getElementsByTagName('script');
+              // Extract and execute scripts safely
+              const codeContainer = document.getElementById('previewContainer');
+              const scripts = codeContainer.getElementsByTagName('script');
               Array.from(scripts).forEach(script => {
                 if (!script.src && script.textContent) {
-                  eval(script.textContent);
+                  // Remove the script to prevent double execution
+                  script.remove();
+                  safeEval(script.textContent);
                 }
               });
 

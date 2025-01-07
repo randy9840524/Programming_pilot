@@ -13,6 +13,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     const generatePreview = async () => {
       try {
         setIsLoading(true);
@@ -29,16 +30,20 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         }
 
         const data = await response.json();
-        if (data.preview) {
+        if (data.preview && isMounted) {
           setPreview(data.preview);
-        } else {
+        } else if (isMounted) {
           setError('No preview content received');
         }
       } catch (err: any) {
-        setError(err.message);
-        setPreview(null);
+        if (isMounted) {
+          setError(err.message);
+          setPreview(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -50,6 +55,10 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       setError(null);
       setIsLoading(false);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [code]);
 
   if (isBuilding || isLoading) {
