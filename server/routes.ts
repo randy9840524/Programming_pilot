@@ -330,8 +330,8 @@ Remember to:
           preview: `
             <!DOCTYPE html>
             <html>
-              <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#000;color:#fff;font-family:system-ui;">
-                <div style="text-align:center;">
+              <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:system-ui;">
+                <div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
                   <p style="font-size:16px;color:#666;">No code to preview</p>
                 </div>
               </body>
@@ -352,59 +352,48 @@ Remember to:
               margin: 0;
               padding: 20px;
               min-height: 100vh;
-              background: #000;
+              background: #f5f5f5;
               display: flex;
               justify-content: center;
               align-items: center;
               font-family: system-ui, sans-serif;
-              color: #fff;
             }
-            canvas {
-              background: #000;
-              max-width: 100%;
-              height: auto;
-              border: 2px solid #333;
-              box-shadow: 0 0 20px rgba(255,255,255,0.1);
+            #previewContainer {
+              width: 100%;
+              max-width: 800px;
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
             #error {
-              color: #ff4444;
-              padding: 20px;
-              background: rgba(255,0,0,0.1);
-              border-radius: 8px;
-              margin: 20px;
-              max-width: 600px;
+              color: #dc2626;
+              padding: 15px;
+              background: #fee2e2;
+              border-radius: 4px;
+              margin: 10px 0;
               font-size: 14px;
               line-height: 1.5;
-            }
-            #gameContainer {
-              text-align: center;
-            }
-            .game-instructions {
-              margin-top: 20px;
-              font-size: 14px;
-              color: #888;
             }
           </style>
         </head>
         <body>
-          <div id="gameContainer">
-            <canvas id="pongCanvas" width="800" height="400"></canvas>
-            <div class="game-instructions">
-              Use arrow keys to control the right paddle
-            </div>
+          <div id="previewContainer">
+            ${code}
           </div>
           <script>
             window.onerror = function(msg, url, lineNo, columnNo, error) {
-              document.getElementById('gameContainer').innerHTML = 
-                '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
+              const container = document.getElementById('previewContainer');
+              container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
               return false;
             };
 
             try {
-              ${code}
+              // Any additional initialization code can go here
+              console.log('Preview initialized successfully');
             } catch (error) {
-              document.getElementById('gameContainer').innerHTML = 
-                '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
+              const container = document.getElementById('previewContainer');
+              container.innerHTML = '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
             }
           </script>
         </body>
@@ -419,9 +408,9 @@ Remember to:
         preview: `
           <!DOCTYPE html>
           <html>
-            <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#000;color:#ff4444;font-family:system-ui;">
-              <div style="text-align:center;">
-                <p style="font-size:16px;">Failed to generate preview: ${error.message}</p>
+            <body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:system-ui;">
+              <div style="text-align:center;padding:20px;background:white;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                <p style="color:#dc2626;font-size:16px;">Failed to generate preview: ${error.message}</p>
               </div>
             </body>
           </html>

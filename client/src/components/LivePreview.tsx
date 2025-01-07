@@ -14,6 +14,8 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   useEffect(() => {
     const generatePreview = async () => {
       try {
+        setError(null);
+
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -25,16 +27,23 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         }
 
         const data = await response.json();
-        setPreview(data.preview);
-        setError(null);
+        if (data.preview) {
+          setPreview(data.preview);
+        } else {
+          setError('No preview content received');
+        }
       } catch (err: any) {
         setError(err.message);
         setPreview(null);
       }
     };
 
-    if (code) {
+    // Only generate preview if we have code
+    if (code && code.trim()) {
       generatePreview();
+    } else {
+      setPreview(null);
+      setError(null);
     }
   }, [code]);
 
@@ -60,7 +69,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   if (!preview) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No preview available</p>
+        <p className="text-sm text-muted-foreground">Enter code to see preview</p>
       </div>
     );
   }
@@ -68,7 +77,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
   return (
     <iframe
       srcDoc={preview}
-      className="w-full h-full border-0 rounded-lg"
+      className="w-full h-full border-0 rounded-lg bg-background"
       sandbox="allow-scripts allow-pointer-lock allow-same-origin"
       title="Live Preview"
     />
