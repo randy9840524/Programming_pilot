@@ -17,7 +17,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
         const response = await fetch('/api/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({}),
         });
 
         if (!response.ok) {
@@ -34,7 +34,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     };
 
     generatePreview();
-  }, [code]);
+  }, []);
 
   if (isBuilding) {
     return (

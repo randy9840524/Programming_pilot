@@ -320,16 +320,8 @@ Remember to:
   });
 
   // Preview endpoint with JavaScript game support
-  app.post("/api/preview", async (req, res) => {
+  app.post("/api/preview", async (_req, res) => {
     try {
-      const { code } = req.body;
-
-      if (!code) {
-        return res.status(400).json({ 
-          message: "No code provided" 
-        });
-      }
-
       // Create a basic HTML preview with proper game setup and error handling
       const preview = `
         <!DOCTYPE html>
@@ -356,19 +348,6 @@ Remember to:
               border: 2px solid #333;
               box-shadow: 0 0 20px rgba(255,255,255,0.1);
             }
-            #error {
-              color: #ff4444;
-              padding: 20px;
-              background: rgba(255,0,0,0.1);
-              border-radius: 8px;
-              margin: 20px;
-              max-width: 600px;
-              font-size: 14px;
-              line-height: 1.5;
-            }
-            #gameContainer {
-              text-align: center;
-            }
             .game-instructions {
               margin-top: 20px;
               font-size: 12px;
@@ -380,24 +359,14 @@ Remember to:
           <div id="gameContainer">
             <canvas id="pongCanvas" width="800" height="400"></canvas>
             <div class="game-instructions">
-              Use arrow keys to control the paddle
+              Use arrow keys to control the right paddle
             </div>
           </div>
           <script>
-            window.onerror = function(msg, url, lineNo, columnNo, error) {
-              document.getElementById('gameContainer').innerHTML = 
-                '<div id="error"><strong>Error:</strong><br>' + msg + '</div>';
-              return false;
-            };
-
             try {
               // Initialize canvas and context
               const canvas = document.getElementById('pongCanvas');
               const ctx = canvas.getContext('2d');
-
-              // Clear canvas initially
-              ctx.fillStyle = '#000';
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
 
               // Game constants
               const PADDLE_SPEED = 5;
@@ -408,7 +377,7 @@ Remember to:
 
               // Game state
               const game = {
-                running: false,
+                running: true,
                 ball: {
                   x: canvas.width / 2,
                   y: canvas.height / 2,
@@ -440,6 +409,13 @@ Remember to:
                 if (e.key === 'ArrowDown') game.keys.down = false;
               });
 
+              function resetBall() {
+                game.ball.x = canvas.width / 2;
+                game.ball.y = canvas.height / 2;
+                game.ball.dx = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+                game.ball.dy = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+              }
+
               // Main game loop
               function gameLoop() {
                 // Move paddles
@@ -469,16 +445,16 @@ Remember to:
                 }
 
                 // Ball collision with paddles
-                const leftPaddleHit = game.ball.x <= PADDLE_WIDTH && 
-                  game.ball.y >= game.leftPaddle.y && 
-                  game.ball.y <= game.leftPaddle.y + PADDLE_HEIGHT;
+                if (game.ball.x <= PADDLE_WIDTH && 
+                    game.ball.y >= game.leftPaddle.y && 
+                    game.ball.y <= game.leftPaddle.y + PADDLE_HEIGHT) {
+                  game.ball.dx = Math.abs(game.ball.dx); // Ensure ball moves right
+                }
 
-                const rightPaddleHit = game.ball.x >= canvas.width - PADDLE_WIDTH - BALL_SIZE && 
-                  game.ball.y >= game.rightPaddle.y && 
-                  game.ball.y <= game.rightPaddle.y + PADDLE_HEIGHT;
-
-                if (leftPaddleHit || rightPaddleHit) {
-                  game.ball.dx *= -1;
+                if (game.ball.x >= canvas.width - PADDLE_WIDTH - BALL_SIZE && 
+                    game.ball.y >= game.rightPaddle.y && 
+                    game.ball.y <= game.rightPaddle.y + PADDLE_HEIGHT) {
+                  game.ball.dx = -Math.abs(game.ball.dx); // Ensure ball moves left
                 }
 
                 // Score points
@@ -510,25 +486,15 @@ Remember to:
                 ctx.fillText(game.rightPaddle.score, canvas.width * 0.75, 50);
 
                 // Continue game loop
-                if (game.running) {
-                  requestAnimationFrame(gameLoop);
-                }
-              }
-
-              function resetBall() {
-                game.ball.x = canvas.width / 2;
-                game.ball.y = canvas.height / 2;
-                game.ball.dx = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
-                game.ball.dy = BALL_SPEED * (Math.random() > 0.5 ? 1 : -1);
+                requestAnimationFrame(gameLoop);
               }
 
               // Start the game
-              game.running = true;
               gameLoop();
 
             } catch (error) {
               document.getElementById('gameContainer').innerHTML = 
-                '<div id="error"><strong>Error:</strong><br>' + error.message + '</div>';
+                '<div style="color: red; padding: 20px;"><strong>Error:</strong><br>' + error.message + '</div>';
             }
           </script>
         </body>
