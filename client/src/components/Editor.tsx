@@ -20,9 +20,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const [activeTab, setActiveTab] = useState<string>("editor");
   const { toast } = useToast();
   const [isBuilding, setIsBuilding] = useState(false);
-  const [editorValue, setEditorValue] = useState<string>(`
-// Start coding here
-// Example: Create a simple HTML page
+  const [editorValue, setEditorValue] = useState<string>(`// Example: Create a simple HTML page
 const content = \`
 <!DOCTYPE html>
 <html>
@@ -76,7 +74,7 @@ document.getElementById('previewContainer').innerHTML = content;
 
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
-    editor.setValue(editorValue); // Ensure initial value is set
+    editor.setValue(editorValue);
   }
 
   if (!file) {
