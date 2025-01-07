@@ -13,9 +13,10 @@ import LivePreview from "./LivePreview";
 interface EditorProps {
   file: string | null;
   onAIToggle: () => void;
+  onCodeChange: (code: string) => void;
 }
 
-export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
+export default function MonacoEditor({ file, onAIToggle, onCodeChange }: EditorProps) {
   const editorRef = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("editor");
@@ -32,10 +33,11 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
         .then(content => {
           editorRef.current.setValue(content);
           setEditorValue(content);
+          onCodeChange(content);
         })
         .catch(console.error);
     }
-  }, [file]);
+  }, [file, onCodeChange]);
 
   const handleSave = async () => {
     if (!file || !editorRef.current) return;
@@ -92,6 +94,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
           clearInterval(pollStatus);
           setIsBuilding(false);
           setBuildLog(status.logs || []);
+          onCodeChange(content);
         }
       }, 2000);
 
@@ -109,6 +112,7 @@ export default function MonacoEditor({ file, onAIToggle }: EditorProps) {
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       setEditorValue(value);
+      onCodeChange(value);
     }
   };
 

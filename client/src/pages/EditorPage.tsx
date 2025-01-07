@@ -8,17 +8,20 @@ import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
 import AIAssistant from "@/components/AIAssistant";
 import ProjectSelector from "@/components/ProjectSelector";
+import LivePreview from "@/components/LivePreview";
 import { useMobile } from "@/hooks/use-mobile";
 
-type RightPanelView = 'ai' | 'artifacts';
+type RightPanelView = 'ai' | 'preview';
 
 export default function EditorPage() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [rightPanelView, setRightPanelView] = useState<RightPanelView>('ai');
+  const [rightPanelView, setRightPanelView] = useState<RightPanelView>('preview');
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [previewCode, setPreviewCode] = useState<string>("");
+  const [isBuilding, setIsBuilding] = useState(false);
 
   useEffect(() => {
     document.title = "CodeCraft IDE - Modern Development Environment";
@@ -31,6 +34,12 @@ export default function EditorPage() {
 
   const handleProjectSelect = (projectId: number | null) => {
     setSelectedProjectId(projectId);
+  };
+
+  const handlePreview = async (code: string) => {
+    setPreviewCode(code);
+    setRightPanelView('preview');
+    setShowRightPanel(true);
   };
 
   return (
@@ -60,7 +69,7 @@ export default function EditorPage() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex">
-        {/* New Vertical Sidebar */}
+        {/* Vertical Sidebar */}
         <div className="w-12 border-r bg-background flex flex-col items-center py-4 gap-4">
           <Button variant="ghost" size="icon" className="w-8 h-8">
             <FolderOpen className="h-4 w-4" />
@@ -68,14 +77,21 @@ export default function EditorPage() {
           <Button variant="ghost" size="icon" className="w-8 h-8">
             <Upload className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8">
-            <Code2 className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8">
-            <Sparkles className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="w-8 h-8"
+            onClick={() => handlePreview(previewCode)}
+          >
             <Play className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="w-8 h-8"
+            onClick={() => setRightPanelView('ai')}
+          >
+            <Sparkles className="h-4 w-4" />
           </Button>
           <div className="flex-1" />
           <Button variant="ghost" size="icon" className="w-8 h-8">
@@ -103,6 +119,7 @@ export default function EditorPage() {
               <Editor
                 file={selectedFile}
                 onAIToggle={() => setShowRightPanel(!showRightPanel)}
+                onCodeChange={setPreviewCode}
               />
             </ResizablePanel>
 
@@ -111,7 +128,11 @@ export default function EditorPage() {
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={40} minSize={30} maxSize={50}>
                   <div className="h-full">
-                    <AIAssistant />
+                    {rightPanelView === 'ai' ? (
+                      <AIAssistant />
+                    ) : (
+                      <LivePreview code={previewCode} isBuilding={isBuilding} />
+                    )}
                   </div>
                 </ResizablePanel>
               </>
