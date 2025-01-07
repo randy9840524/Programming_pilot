@@ -35,6 +35,7 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       }
     };
 
+    // Add a small delay to avoid too many requests while typing
     const timeoutId = setTimeout(generatePreview, 500);
     return () => clearTimeout(timeoutId);
   }, [code]);
@@ -72,11 +73,6 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
       className="w-full h-full border-0 rounded-lg"
       sandbox="allow-scripts"
       title="Live Preview"
-      style={{ 
-        backgroundColor: '#000',
-        width: '100%',
-        height: '100%'
-      }}
     />
   );
 }
