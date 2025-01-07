@@ -16,7 +16,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { InsertProject, SelectProject } from "@db/schema";
 
-export default function ProjectSelector() {
+interface ProjectSelectorProps {
+  onSelect: (projectId: number | null) => void;
+}
+
+export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [newProject, setNewProject] = useState<Partial<InsertProject>>({
     name: "",
@@ -43,10 +47,11 @@ export default function ProjectSelector() {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (newProject) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setIsNewProjectOpen(false);
       setNewProject({ name: "", description: "" });
+      onSelect(newProject.id);
       toast({
         title: "Success",
         description: "Project created successfully",
@@ -72,7 +77,10 @@ export default function ProjectSelector() {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[200px]">
           {projects?.map((project) => (
-            <DropdownMenuItem key={project.id}>
+            <DropdownMenuItem 
+              key={project.id}
+              onClick={() => onSelect(project.id)}
+            >
               {project.name}
             </DropdownMenuItem>
           ))}

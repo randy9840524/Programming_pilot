@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Menu, Settings } from "lucide-react";
+import { Menu, Settings, Upload, Play, Sparkles, FileText, FolderOpen, Code2 } from "lucide-react";
 import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import CommandPalette from "@/components/CommandPalette";
@@ -53,56 +53,71 @@ export default function EditorPage() {
           <CommandPalette />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRightPanel(!showRightPanel)}
-            className="flex items-center gap-2"
-          >
-            {showRightPanel ? "Hide Panel" : "Show Panel"}
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </div>
+        <Button variant="ghost" size="icon">
+          <Settings className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal">
-          {showSidebar && (
-            <>
-              <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
-                <ScrollArea className="h-full border-r">
-                  <FileExplorer
-                    onFileSelect={setSelectedFile}
-                    selectedFile={selectedFile}
-                  />
-                </ScrollArea>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-            </>
-          )}
+      <div className="flex-1 overflow-hidden flex">
+        {/* New Vertical Sidebar */}
+        <div className="w-12 border-r bg-background flex flex-col items-center py-4 gap-4">
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <FolderOpen className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <Upload className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <Code2 className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <Sparkles className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <Play className="h-4 w-4" />
+          </Button>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" className="w-8 h-8">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
 
-          <ResizablePanel defaultSize={showRightPanel ? 45 : 85} minSize={30}>
-            <Editor
-              file={selectedFile}
-              onAIToggle={() => setShowRightPanel(!showRightPanel)}
-            />
-          </ResizablePanel>
+        <div className="flex-1">
+          <ResizablePanelGroup direction="horizontal">
+            {showSidebar && (
+              <>
+                <ResizablePanel defaultSize={15} minSize={10} maxSize={20}>
+                  <ScrollArea className="h-full border-r">
+                    <FileExplorer
+                      onFileSelect={setSelectedFile}
+                      selectedFile={selectedFile}
+                    />
+                  </ScrollArea>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+              </>
+            )}
 
-          {showRightPanel && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={40} minSize={30} maxSize={50}>
-                <div className="h-full">
-                  <AIAssistant />
-                </div>
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+            <ResizablePanel defaultSize={showRightPanel ? 45 : 85} minSize={30}>
+              <Editor
+                file={selectedFile}
+                onAIToggle={() => setShowRightPanel(!showRightPanel)}
+              />
+            </ResizablePanel>
+
+            {showRightPanel && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={40} minSize={30} maxSize={50}>
+                  <div className="h-full">
+                    <AIAssistant />
+                  </div>
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </div>
       </div>
     </div>
   );
