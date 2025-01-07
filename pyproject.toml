@@ -1,0 +1,10 @@
+[project]
+name = "repl-nix-programmingpilot"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "pyinstaller>=6.11.1",
+    "python-dotenv>=1.0.1",
+    "pywebview>=5.3.2",
+]
