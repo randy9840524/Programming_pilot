@@ -1,0 +1,39 @@
+Current Issue:
+The LivePreview component is not optimized to display cloned website content effectively. Specifically:
+
+The preview dialog struggles to render the cloned websites accurately.
+Some layout or styling issues may arise due to missing optimization logic for dynamically loaded content.
+The LivePreview component may not handle the cloned website’s dependencies (e.g., CSS, JavaScript) correctly.
+Expected Behavior:
+The LivePreview dialog should seamlessly render the cloned websites as they appear in their original environment.
+Ensure compatibility with dynamic elements, external dependencies (e.g., scripts, styles), and responsive design.
+Fix Requirements:
+Rendering Optimization:
+
+Ensure that all HTML, CSS, and JavaScript dependencies for the cloned site are loaded and applied within the LivePreview component.
+Handle dynamic content or scripts that might load asynchronously or on user interaction.
+Styling and Layout:
+
+Adjust the preview container to accommodate various screen sizes and cloned website layouts.
+Implement scrolling or resizing logic if the cloned content exceeds the LivePreview bounds.
+Error Handling:
+
+Add fallback behavior or error messages if the cloned website fails to load properly.
+Validate and sanitize content being previewed to avoid rendering issues or security risks.
+Performance:
+
+Optimize resource loading to minimize lag or delays in rendering the preview.
+Lazy load assets if applicable to improve responsiveness.
+Testing:
+
+Test the LivePreview with multiple cloned websites (static and dynamic).
+Validate compatibility with modern browsers and various resolutions.
+Additional Features:
+Optional: Provide an indicator (e.g., loading spinner) while the cloned content is being prepared for display.
+Optional: Include zoom or scale controls in the LivePreview dialog for better inspection of the cloned site.
+Technical Context:
+Technology Stack: [Provide details on the framework or libraries used, e.g., React, Vue.js, etc.]
+Current Implementation: [Provide a brief description or code snippet of the current LivePreview component if available.]
+Language Preferences:
+Use JavaScript/TypeScript (React preferred if applicable) for the implementation.
+Goal: Deliver a fully functional and visually accurate LivePreview dialog capable of rendering cloned websites reliably.

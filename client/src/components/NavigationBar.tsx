@@ -37,6 +37,14 @@ interface NavItemProps {
   variant?: 'default' | 'success';
 }
 
+interface NavItem {
+  icon: React.ReactNode;
+  tooltip: string;
+  path?: string;
+  onClick?: () => void;
+  variant?: 'default' | 'success';
+}
+
 const NavItem = ({ icon, tooltip, onClick, active, variant = 'default' }: NavItemProps) => {
   return (
     <TooltipProvider delayDuration={200}>
@@ -163,7 +171,7 @@ export default function NavigationBar() {
     input.click();
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { icon: <Home className="h-5 w-5" />, tooltip: "Home", path: "/" },
     { icon: <MessageCircle className="h-5 w-5" />, tooltip: "Natural Language Prompt", path: "/prompt" },
     { 
