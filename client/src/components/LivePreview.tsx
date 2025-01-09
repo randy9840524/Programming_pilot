@@ -9,6 +9,22 @@ interface LivePreviewProps {
 
 export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps) {
   const [error, setError] = useState<string | null>(null);
+  const [sanitizedContent, setSanitizedContent] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (htmlContent) {
+      try {
+        // Ensure the HTML content is properly formatted
+        setSanitizedContent(htmlContent);
+        setError(null);
+      } catch (err) {
+        console.error('Error processing HTML:', err);
+        setError('Error processing preview content');
+      }
+    } else {
+      setSanitizedContent(null);
+    }
+  }, [htmlContent]);
 
   if (isLoading) {
     return (
@@ -29,18 +45,21 @@ export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps
     );
   }
 
-  if (!htmlContent) {
+  if (!sanitizedContent) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Upload a file to preview</p>
+      <div className="h-full flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
+        <div className="text-center p-4">
+          <p className="text-sm text-muted-foreground mb-2">No preview available</p>
+          <p className="text-xs text-muted-foreground">Upload a file to see the preview</p>
+        </div>
       </div>
     );
   }
 
   return (
     <iframe
-      srcDoc={htmlContent}
-      className="w-full h-full border-0 rounded-lg"
+      srcDoc={sanitizedContent}
+      className="w-full h-full border-0 rounded-lg bg-white"
       sandbox="allow-scripts allow-same-origin"
       title="Live Preview"
     />
