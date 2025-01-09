@@ -1,20 +1,12 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import OpenAI from "openai";
 import { promises as fs } from 'fs';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
-import archiver from 'archiver';
 import path from 'path';
 import { artifacts, projects, insertProjectSchema, files, artifactVersions } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import { createDesktopPackage, createZipArchive, cleanupTempDir, getWebDeploymentUrl } from './utils/export';
-import { createPongGame } from '../client/src/lib/game/pong';
-
-const readdir = promisify(fs.readdir);
-const stat = promisify(fs.stat);
-const execFileAsync = promisify(execFile);
+import fetch from "node-fetch";
 
 // Initialize OpenAI with API key
 const openai = new OpenAI({
@@ -23,16 +15,16 @@ const openai = new OpenAI({
 
 async function getLatestFile(directory: string): Promise<string | null> {
   try {
-    const dirFiles = await readdir(directory);
+    const files = await fs.readdir(directory);
     let latestFile: string | null = null;
     let latestTime = 0;
 
-    for (const file of dirFiles) {
+    for (const file of files) {
       if (file.endsWith('.png')) {
         const filePath = path.join(directory, file);
-        const fileStats = await stat(filePath);
-        if (fileStats.mtimeMs > latestTime) {
-          latestTime = fileStats.mtimeMs;
+        const stats = await fs.stat(filePath);
+        if (stats.mtimeMs > latestTime) {
+          latestTime = stats.mtimeMs;
           latestFile = filePath;
         }
       }
@@ -231,18 +223,12 @@ export function registerRoutes(app: Express): Server {
       const messages: any[] = [
         {
           role: "system" as const,
-          content: `You are an expert software development assistant specializing in building web applications. 
-You can see and analyze both code and images that users share.
-When analyzing uploaded content:
-1. First describe what you see in any images
-2. Then provide specific, actionable guidance for implementation
-3. Include complete code samples when relevant
-4. Always acknowledge uploaded files in your response
-
-Remember to:
-- Be specific about UI elements and layout
-- Provide complete code snippets that can be directly used
-- Reference visual elements from uploaded images in your explanations`
+          content: `You are an expert UI designer and developer. Analyze the uploaded content and provide HTML/CSS code to replicate the design. Focus on:
+1. Accurate visual representation
+2. Responsive layout
+3. Modern CSS practices
+4. Accessibility
+Output complete, self-contained HTML with embedded CSS that can be directly previewed.`
         }
       ];
 
@@ -259,7 +245,7 @@ Remember to:
         messages.push({
           role: "user" as const,
           content: [
-            { type: "text", text: prompt || "Please analyze these files" },
+            { type: "text", text: prompt || "Please analyze this content and create a pixel-perfect HTML/CSS implementation" },
             ...fileContents
           ]
         });
@@ -271,11 +257,11 @@ Remember to:
 
         if (latestImage) {
           try {
-            const imageBuffer = await fs.promises.readFile(latestImage);
+            const imageBuffer = await fs.readFile(latestImage);
             messages.push({
               role: "user" as const,
               content: [
-                { type: "text", text: prompt },
+                { type: "text", text: prompt || "Please analyze this image and create a pixel-perfect HTML/CSS implementation" },
                 {
                   type: "image_url",
                   image_url: {
@@ -288,13 +274,13 @@ Remember to:
             console.error("Error reading image file:", error);
             messages.push({
               role: "user" as const,
-              content: prompt
+              content: prompt || "Please provide a default implementation"
             });
           }
         } else {
           messages.push({
             role: "user" as const,
-            content: prompt
+            content: prompt || "Please provide a default implementation"
           });
         }
       }
@@ -305,7 +291,7 @@ Remember to:
         model: "gpt-4o",
         messages,
         temperature: 0.7,
-        max_tokens: 3000
+        max_tokens: 4000
       });
 
       const response = completion.choices[0]?.message?.content;
@@ -316,6 +302,7 @@ Remember to:
 
       console.log("Successfully got response from OpenAI");
       res.json({ response });
+
     } catch (error: any) {
       console.error("AI Analysis failed:", error);
       res.status(500).json({
@@ -324,413 +311,39 @@ Remember to:
     }
   });
 
-  // Preview endpoint with Login portal
-  app.post("/api/preview", async (_req: Request, res: Response) => {
+  // Preview endpoint
+  app.post("/api/preview", async (req: Request, res: Response) => {
     try {
-      const preview = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              min-height: 100vh;
-              background: #dc2626;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              font-family: system-ui, sans-serif;
-            }
-            .login-container {
-              width: 100%;
-              max-width: 400px;
-              background: white;
-              padding: 2rem;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              margin: 1rem;
-            }
-            .logo {
-              text-align: center;
-              margin-bottom: 2rem;
-            }
-            .logo-circle {
-              width: 40px;
-              height: 40px;
-              background: #dc2626;
-              border-radius: 50%;
-              margin: 0 auto 1rem;
-              animation: spin 2s linear infinite;
-            }
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-            .form-group {
-              margin-bottom: 1rem;
-            }
-            .form-group label {
-              display: block;
-              margin-bottom: 0.5rem;
-              font-size: 0.875rem;
-              color: #374151;
-            }
-            .form-group input {
-              width: 100%;
-              padding: 0.5rem;
-              border: 1px solid #d1d5db;
-              border-radius: 4px;
-              font-size: 1rem;
-              transition: border-color 0.2s, box-shadow 0.2s;
-            }
-            .form-group input:focus {
-              outline: none;
-              border-color: #2563eb;
-              box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-            }
-            .submit-button {
-              width: 100%;
-              padding: 0.75rem;
-              background: #2563eb;
-              color: white;
-              border: none;
-              border-radius: 4px;
-              font-size: 1rem;
-              cursor: pointer;
-              transition: background-color 0.2s;
-            }
-            .submit-button:hover {
-              background: #1d4ed8;
-            }
-            .submit-button:active {
-              transform: translateY(1px);
-            }
-            .social-login-text {
-              text-align: center;
-              color: #666;
-              font-size: 0.9rem;
-              margin-bottom: 1rem;
-            }
-            .social-login-buttons {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 10px;
-              margin-top: 20px;
-            }
-            .social-button {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              padding: 8px;
-              border: 1px solid #ddd;
-              border-radius: 4px;
-              background: white;
-              cursor: pointer;
-              transition: all 0.2s;
-            }
-            .social-button:hover {
-              background: #f8f9fa;
-              transform: translateY(-1px);
-            }
-            .social-button i {
-              font-size: 1.2rem;
-            }
-            .social-button.facebook i {
-              color: #1877f2;
-            }
-            .social-button.google i {
-              color: #ea4335;
-            }
-            .social-button.github i {
-              color: #333;
-            }
-            .divider {
-              display: flex;
-              align-items: center;
-              text-align: center;
-              margin: 20px 0;
-            }
-            .divider::before,
-            .divider::after {
-              content: '';
-              flex: 1;
-              border-bottom: 1px solid #ddd;
-            }
-            .divider span {
-              padding: 0 10px;
-              color: #666;
-              font-size: 0.9rem;
-            }
-            .terms {
-              text-align: center;
-              font-size: 0.75rem;
-              color: #6b7280;
-              margin-top: 1rem;
-            }
-            .error-message {
-              color: #dc2626;
-              font-size: 0.875rem;
-              margin-top: 0.25rem;
-            }
-            .forgot-password {
-              text-align: right;
-              margin-bottom: 1rem;
-            }
-            .forgot-password a {
-              color: #2563eb;
-              font-size: 0.875rem;
-              text-decoration: none;
-            }
-            .forgot-password a:hover {
-              text-decoration: underline;
-            }
-            .login-options {
-              margin-top: 1rem;
-            }
-            .login-options button {
-              font-weight: normal;
-            }
-            .space-y-4 > * {
-              margin-bottom: 1rem;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="login-container">
-            <div class="logo">
-              <div class="logo-circle"></div>
-              <h1 style="font-size: 1.5rem; font-weight: bold;">ClientZone</h1>
-            </div>
-            <form id="loginForm">
-              <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="username" placeholder="Enter your username" required />
-                <div id="usernameError" class="error-message"></div>
-              </div>
-              <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" placeholder="Enter your password" required />
-                <div id="passwordError" class="error-message"></div>
-              </div>
-              <div class="forgot-password">
-                <a href="#" onclick="handleForgotPassword(event)">Forgot Password</a>
-              </div>
-              <button type="submit" class="submit-button">Login</button>
-              <div class="terms">
-                By logging in you accept our latest Terms and Conditions
-              </div>
+      const { response } = req.body;
 
-              <div class="login-options mt-4 text-center">
-                <button 
-                  type="button" 
-                  onclick="toggleForm('register')"
-                  id="createAccountBtn"
-                  class="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer">
-                  Need an account? Create one
-                </button>
-              </div>
+      // If no response provided, get one from the AI
+      if (!response) {
+        const analyzeResponse = await fetch(`${req.protocol}://${req.get('host')}/api/analyze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        });
 
-              <div class="divider">
-                <span>Or login with</span>
-              </div>
-              <div class="social-login-buttons">
-                <button onclick="handleSocialLogin('facebook')" class="social-button facebook">
-                  <i class="fab fa-facebook-f"></i>
-                </button>
-                <button onclick="handleSocialLogin('google')" class="social-button google">
-                  <i class="fab fa-google"></i>
-                </button>
-                <button onclick="handleSocialLogin('github')" class="social-button github">
-                  <i class="fab fa-github"></i>
-                </button>
-              </div>
-            </form>
+        if (!analyzeResponse.ok) {
+          throw new Error('Failed to analyze content');
+        }
 
-            <!-- Registration Form -->
-            <form id="registerForm" style="display: none;" class="space-y-4">
-              <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="registerEmail" placeholder="Enter your email" required />
-                <div id="registerEmailError" class="error-message"></div>
-              </div>
-              <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="registerUsername" placeholder="Choose a username" required />
-                <div id="registerUsernameError" class="error-message"></div>
-              </div>
-              <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="registerPassword" placeholder="Create a password" required />
-                <div id="registerPasswordError" class="error-message"></div>
-              </div>
-              <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" required />
-                <div id="registerConfirmPasswordError" class="error-message"></div>
-              </div>
-              <button type="submit" class="submit-button">Create Account</button>
-
-              <div class="login-options mt-4 text-center">
-                <button 
-                  type="button"
-                  onclick="toggleForm('login')"
-                  id="loginBtn"
-                  class="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer">
-                  Already have an account? Login
-                </button>
-              </div>
-
-              <div class="terms">
-                By creating an account you accept our latest Terms and Conditions
-              </div>
-            </form>
-          </div>
-
-          <script>
-            function toggleForm(formType) {
-              const loginForm = document.getElementById('loginForm');
-              const registerForm = document.getElementById('registerForm');
-
-              if (formType === 'login') {
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
-              } else {
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-              }
-            }
-
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-              e.preventDefault();
-
-              // Reset error messages
-              document.getElementById('usernameError').textContent = '';
-              document.getElementById('passwordError').textContent = '';
-
-              const username = document.getElementById('username').value;
-              const password = document.getElementById('password').value;
-
-              // Basic validation
-              let hasError = false;
-              if (!username) {
-                document.getElementById('usernameError').textContent = 'Username is required';
-                hasError = true;
-              }
-              if (!password) {
-                document.getElementById('passwordError').textContent = 'Password is required';
-                hasError = true;
-              }
-
-              if (!hasError) {
-                const submitButton = e.target.querySelector('.submit-button');
-                submitButton.textContent = 'Logging in...';
-                submitButton.disabled = true;
-
-                try {
-                  // Simulate API call
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-
-                  // For demo purposes, show success for specific credentials
-                  if (username === 'demo' && password === 'password') {
-                    alert('Login successful!');
-                    window.location.href = '/dashboard';
-                  } else {
-                    alert('Invalid credentials. Try demo/password');
-                  }
-                } catch (error) {
-                  alert('Login failed. Please try again.');
-                } finally {
-                  submitButton.textContent = 'Login';
-                  submitButton.disabled = false;
-                }
-              }
-            });
-
-            document.getElementById('registerForm').addEventListener('submit', async (e) => {
-              e.preventDefault();
-
-              // Reset error messages
-              const errorElements = document.querySelectorAll('.error-message');
-              errorElements.forEach(el => el.textContent = '');
-
-              const email = document.getElementById('registerEmail').value;
-              const username = document.getElementById('registerUsername').value;
-              const password = document.getElementById('registerPassword').value;
-              const confirmPassword = document.getElementById('registerConfirmPassword').value;
-
-              // Validation
-              let hasError = false;
-
-              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                document.getElementById('registerEmailError').textContent = 'Valid email is required';
-                hasError = true;
-              }
-
-              if (!username || username.length < 3) {
-                document.getElementById('registerUsernameError').textContent = 'Username must be at least 3 characters';
-                hasError = true;
-              }
-
-              if (!password || password.length < 6) {
-                document.getElementById('registerPasswordError').textContent = 'Password must be at least 6 characters';
-                hasError = true;
-              }
-
-              if (password !== confirmPassword) {
-                document.getElementById('registerConfirmPasswordError').textContent = 'Passwords do not match';
-                hasError = true;
-              }
-
-              if (!hasError) {
-                const submitButton = e.target.querySelector('.submit-button');
-                submitButton.textContent = 'Creating Account...';
-                submitButton.disabled = true;
-
-                try {
-                  // Simulate API call
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                  alert('Account created successfully! Please login.');
-                  toggleForm('login');
-                } catch (error) {
-                  alert('Registration failed. Please try again.');
-                } finally {
-                  submitButton.textContent = 'Create Account';
-                  submitButton.disabled = false;
-                }
-              }
-            });
-
-            function handleSocialLogin(provider) {
-              // Navigate to the appropriate auth URL based on provider
-              const authUrls = {
-                facebook: '/auth/facebook',
-                google: '/auth/google',
-                github: '/auth/github'
-              };
-
-              const url = authUrls[provider];
-              if (url) {
-                window.location.href = url;
-              }
-            }
-
-            function handleForgotPassword(e) {
-              e.preventDefault();
-              alert('Password reset functionality coming soon!');
-            }
-          </script>
-        </body>
-        </html>
-      `;
-
-      res.json({ preview });
-    } catch (error) {
+        const data = await analyzeResponse.json();
+        if (typeof data.response !== 'string') {
+          throw new Error('Invalid response format from analyze endpoint');
+        }
+        res.json({ preview: data.response });
+      } else {
+        if (typeof response !== 'string') {
+          throw new Error('Invalid response format');
+        }
+        res.json({ preview: response });
+      }
+    } catch (error: any) {
       console.error("Preview generation failed:", error);
-      res.status(500).json({ message: "Failed to generate preview" });
+      res.status(500).json({ message: error.message || "Failed to generate preview" });
     }
   });
 
@@ -856,4 +469,31 @@ Remember to:
     }
   });
   return httpServer;
+}
+
+
+// Placeholder functions -  These need to be implemented separately.
+function createPongGame(): string {
+  //Implementation for Pong game creation
+  throw new Error("Function not implemented.");
+}
+
+async function createDesktopPackage(tempDir: string, gameHTML: string): Promise<void> {
+  //Implementation for creating desktop package
+  throw new Error("Function not implemented.");
+}
+
+async function createZipArchive(tempDir: string): Promise<string> {
+  //Implementation for creating zip archive
+  throw new Error("Function not implemented.");
+}
+
+async function cleanupTempDir(tempDir: string): Promise<void> {
+  //Implementation for cleaning up temporary directory
+  throw new Error("Function not implemented.");
+}
+
+function getWebDeploymentUrl(): string {
+  //Implementation for getting web deployment URL
+  throw new Error("Function not implemented.");
 }

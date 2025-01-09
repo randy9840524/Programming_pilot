@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -47,16 +48,82 @@ const NavItem = ({ icon, tooltip, onClick, active }: NavItemProps) => {
 
 export default function NavigationBar() {
   const [location, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  const handleClone = () => {
+  const handleClone = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,.xlsx,.xls,.doc,.docx';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        console.log('File selected:', file);
-        // TODO: Implement file processing
+        try {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const base64Data = e.target?.result?.toString().split(',')[1];
+            if (base64Data) {
+              // Send file for analysis
+              const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  files: [{
+                    type: file.type,
+                    name: file.name,
+                    data: base64Data
+                  }],
+                  prompt: "Please analyze this content and create a pixel-perfect HTML/CSS implementation"
+                }),
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to analyze file');
+              }
+
+              const { response: analyzedContent } = await response.json();
+
+              // Get preview of the analyzed content
+              const previewResponse = await fetch('/api/preview', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ response: analyzedContent }),
+              });
+
+              if (!previewResponse.ok) {
+                throw new Error('Failed to generate preview');
+              }
+
+              const { preview } = await previewResponse.json();
+
+              // Create blob and URL for preview
+              const blob = new Blob([preview], { type: 'text/html' });
+              const url = URL.createObjectURL(blob);
+
+              // Open preview in new window
+              const previewWindow = window.open(url, '_blank');
+              if (previewWindow) {
+                previewWindow.focus();
+              }
+
+              toast({
+                title: "Success",
+                description: "Preview generated successfully",
+              });
+            }
+          };
+          reader.readAsDataURL(file);
+        } catch (error) {
+          console.error('Error processing file:', error);
+          toast({
+            title: "Error",
+            description: "Failed to process file",
+            variant: "destructive",
+          });
+        }
       }
     };
     input.click();
