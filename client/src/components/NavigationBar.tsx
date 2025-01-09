@@ -27,26 +27,29 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import LivePreview from "./LivePreview";
+import { cn } from "@/lib/utils";
 
 interface NavItemProps {
   icon: React.ReactNode;
   tooltip: string;
   onClick: () => void;
   active?: boolean;
+  variant?: 'default' | 'success';
 }
 
-const NavItem = ({ icon, tooltip, onClick, active }: NavItemProps) => {
+const NavItem = ({ icon, tooltip, onClick, active, variant = 'default' }: NavItemProps) => {
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onClick}
-            className={`p-2 rounded-lg transition-colors ${
-              active
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent hover:text-accent-foreground"
-            }`}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              active && "bg-primary text-primary-foreground",
+              variant === 'success' && "bg-green-500 text-white hover:bg-green-600",
+              variant === 'default' && !active && "hover:bg-accent hover:text-accent-foreground"
+            )}
           >
             {icon}
           </button>
@@ -65,6 +68,7 @@ export default function NavigationBar() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCloneReady, setIsCloneReady] = useState(false);
 
   const handleClone = async () => {
     const input = document.createElement('input');
@@ -77,6 +81,7 @@ export default function NavigationBar() {
           setIsLoading(true);
           setIsPreviewOpen(true);
           setPreviewContent(null);
+          setIsCloneReady(false);
 
           const reader = new FileReader();
           reader.onload = async (e) => {
@@ -118,6 +123,7 @@ export default function NavigationBar() {
 
                 const previewHtml = await previewResponse.text();
                 setPreviewContent(previewHtml);
+                setIsCloneReady(true);
 
                 toast({
                   title: "Success",
@@ -130,6 +136,7 @@ export default function NavigationBar() {
                   description: error.message || "Failed to process file",
                   variant: "destructive",
                 });
+                setIsCloneReady(false);
               }
             }
           };
@@ -141,6 +148,7 @@ export default function NavigationBar() {
             description: error.message || "Failed to process file",
             variant: "destructive",
           });
+          setIsCloneReady(false);
         } finally {
           setIsLoading(false);
         }
@@ -152,7 +160,12 @@ export default function NavigationBar() {
   const navItems = [
     { icon: <Home className="h-5 w-5" />, tooltip: "Home", path: "/" },
     { icon: <MessageCircle className="h-5 w-5" />, tooltip: "Natural Language Prompt", path: "/prompt" },
-    { icon: <Code2 className="h-5 w-5" />, tooltip: "Real-Time Preview", path: "/preview" },
+    { 
+      icon: <Code2 className="h-5 w-5" />, 
+      tooltip: isCloneReady ? "Preview Ready!" : "Real-Time Preview", 
+      path: "/preview",
+      variant: isCloneReady ? 'success' : 'default'
+    },
     { icon: <FileCode className="h-5 w-5" />, tooltip: "Backend Development", path: "/backend" },
     { icon: <Globe className="h-5 w-5" />, tooltip: "One-Click Website", path: "/deploy" },
     { icon: <Github className="h-5 w-5" />, tooltip: "GitHub Integration", path: "/github" },
@@ -172,6 +185,7 @@ export default function NavigationBar() {
             tooltip={item.tooltip}
             onClick={item.onClick || (() => setLocation(item.path!))}
             active={item.path ? location === item.path : false}
+            variant={item.variant}
           />
         ))}
       </nav>
