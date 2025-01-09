@@ -209,15 +209,14 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // AI Analysis endpoint with enhanced file handling
+  // AI Analysis endpoint
   app.post("/api/analyze", async (req: Request, res: Response) => {
     try {
       const { prompt, files: uploadedFiles } = req.body;
       console.log("Received analyze request:", { prompt, filesCount: uploadedFiles?.length });
 
       if (!process.env.OPENAI_API_KEY) {
-        console.error("OpenAI API key not configured");
-        return res.status(500).json({ message: "OpenAI API key not configured" });
+        throw new Error("OpenAI API key not configured");
       }
 
       const messages: any[] = [
@@ -256,27 +255,19 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
         console.log("Latest image found:", latestImage);
 
         if (latestImage) {
-          try {
-            const imageBuffer = await fs.readFile(latestImage);
-            messages.push({
-              role: "user" as const,
-              content: [
-                { type: "text", text: prompt || "Please analyze this image and create a pixel-perfect HTML/CSS implementation" },
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:image/png;base64,${imageBuffer.toString('base64')}`
-                  }
+          const imageBuffer = await fs.readFile(latestImage);
+          messages.push({
+            role: "user" as const,
+            content: [
+              { type: "text", text: prompt || "Please analyze this image and create a pixel-perfect HTML/CSS implementation" },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/png;base64,${imageBuffer.toString('base64')}`
                 }
-              ]
-            });
-          } catch (error) {
-            console.error("Error reading image file:", error);
-            messages.push({
-              role: "user" as const,
-              content: prompt || "Please provide a default implementation"
-            });
-          }
+              }
+            ]
+          });
         } else {
           messages.push({
             role: "user" as const,
@@ -296,7 +287,6 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
 
       const response = completion.choices[0]?.message?.content;
       if (!response) {
-        console.error("No response from OpenAI");
         throw new Error("Failed to get response from AI");
       }
 
@@ -333,29 +323,71 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
 
         const { response: analyzedContent } = await analyzeResponse.json();
 
-        // Extract HTML content from the AI response
-        // Find the HTML content between ```html and ``` if it exists
+        // Extract HTML content between ```html and ```
         let htmlContent = analyzedContent;
         const htmlMatch = analyzedContent.match(/```html\n([\s\S]*?)```/);
         if (htmlMatch) {
           htmlContent = htmlMatch[1];
         }
 
-        // Send response with correct content type
-        res.setHeader('Content-Type', 'text/html');
-        res.send(htmlContent);
-      } else {
-        // Extract HTML from response if needed
-        let htmlContent = response;
-        const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
-        if (htmlMatch) {
-          htmlContent = htmlMatch[1];
+        // Add default styling if not present
+        if (!htmlContent.includes('<style>')) {
+          htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  ${htmlContent}
+</body>
+</html>`;
         }
 
-        // Send direct HTML response
         res.setHeader('Content-Type', 'text/html');
-        res.send(htmlContent);
+        return res.send(htmlContent);
       }
+
+      // Handle direct response
+      let htmlContent = response;
+      const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
+      if (htmlMatch) {
+        htmlContent = htmlMatch[1];
+      }
+
+      if (!htmlContent.includes('<style>')) {
+        htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  ${htmlContent}
+</body>
+</html>`;
+      }
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(htmlContent);
     } catch (error: any) {
       console.error("Preview generation failed:", error);
       res.status(500).json({ 

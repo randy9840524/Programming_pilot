@@ -79,7 +79,7 @@ export default function NavigationBar() {
             const base64Data = e.target?.result?.toString().split(',')[1];
             if (base64Data) {
               // Send file for analysis
-              const response = await fetch('/api/analyze', {
+              const analyzeResponse = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -94,11 +94,11 @@ export default function NavigationBar() {
                 }),
               });
 
-              if (!response.ok) {
+              if (!analyzeResponse.ok) {
                 throw new Error('Failed to analyze file');
               }
 
-              const { response: analyzedContent } = await response.json();
+              const { response: analyzedContent } = await analyzeResponse.json();
 
               // Get preview of the analyzed content
               const previewResponse = await fetch('/api/preview', {
@@ -113,6 +113,7 @@ export default function NavigationBar() {
                 throw new Error('Failed to generate preview');
               }
 
+              // Get the preview HTML directly
               const previewHtml = await previewResponse.text();
               setPreviewContent(previewHtml);
 
