@@ -363,6 +363,11 @@ Remember to:
               background: #dc2626;
               border-radius: 50%;
               margin: 0 auto 1rem;
+              animation: spin 2s linear infinite;
+            }
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
             }
             .form-group {
               margin-bottom: 1rem;
@@ -379,6 +384,12 @@ Remember to:
               border: 1px solid #d1d5db;
               border-radius: 4px;
               font-size: 1rem;
+              transition: border-color 0.2s, box-shadow 0.2s;
+            }
+            .form-group input:focus {
+              outline: none;
+              border-color: #2563eb;
+              box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
             }
             .submit-button {
               width: 100%;
@@ -389,9 +400,13 @@ Remember to:
               border-radius: 4px;
               font-size: 1rem;
               cursor: pointer;
+              transition: background-color 0.2s;
             }
             .submit-button:hover {
               background: #1d4ed8;
+            }
+            .submit-button:active {
+              transform: translateY(1px);
             }
             .social-login {
               margin-top: 2rem;
@@ -409,12 +424,36 @@ Remember to:
               border-radius: 4px;
               background: white;
               cursor: pointer;
+              transition: background-color 0.2s, transform 0.1s;
+            }
+            .social-button:hover {
+              background: #f3f4f6;
+            }
+            .social-button:active {
+              transform: translateY(1px);
             }
             .terms {
               text-align: center;
               font-size: 0.75rem;
               color: #6b7280;
               margin-top: 1rem;
+            }
+            .error-message {
+              color: #dc2626;
+              font-size: 0.875rem;
+              margin-top: 0.25rem;
+            }
+            .forgot-password {
+              text-align: right;
+              margin-bottom: 1rem;
+            }
+            .forgot-password a {
+              color: #2563eb;
+              font-size: 0.875rem;
+              text-decoration: none;
+            }
+            .forgot-password a:hover {
+              text-decoration: underline;
             }
           </style>
         </head>
@@ -424,14 +463,19 @@ Remember to:
               <div class="logo-circle"></div>
               <h1 style="font-size: 1.5rem; font-weight: bold;">ClientZone</h1>
             </div>
-            <form>
+            <form id="loginForm">
               <div class="form-group">
                 <label>Username</label>
-                <input type="text" placeholder="Enter your username" />
+                <input type="text" id="username" placeholder="Enter your username" required />
+                <div id="usernameError" class="error-message"></div>
               </div>
               <div class="form-group">
                 <label>Password</label>
-                <input type="password" placeholder="Enter your password" />
+                <input type="password" id="password" placeholder="Enter your password" required />
+                <div id="passwordError" class="error-message"></div>
+              </div>
+              <div class="forgot-password">
+                <a href="#" onclick="handleForgotPassword(event)">Forgot Password</a>
               </div>
               <button type="submit" class="submit-button">Login</button>
               <div class="terms">
@@ -445,13 +489,70 @@ Remember to:
                   </span>
                 </div>
                 <div class="social-buttons">
-                  <button class="social-button">FB</button>
-                  <button class="social-button">G</button>
-                  <button class="social-button">GH</button>
+                  <button type="button" class="social-button" onclick="handleSocialLogin('facebook')">FB</button>
+                  <button type="button" class="social-button" onclick="handleSocialLogin('google')">G</button>
+                  <button type="button" class="social-button" onclick="handleSocialLogin('github')">GH</button>
                 </div>
               </div>
             </form>
           </div>
+
+          <script>
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+
+              // Reset error messages
+              document.getElementById('usernameError').textContent = '';
+              document.getElementById('passwordError').textContent = '';
+
+              const username = document.getElementById('username').value;
+              const password = document.getElementById('password').value;
+
+              // Basic validation
+              let hasError = false;
+              if (!username) {
+                document.getElementById('usernameError').textContent = 'Username is required';
+                hasError = true;
+              }
+              if (!password) {
+                document.getElementById('passwordError').textContent = 'Password is required';
+                hasError = true;
+              }
+
+              if (!hasError) {
+                const submitButton = e.target.querySelector('.submit-button');
+                submitButton.textContent = 'Logging in...';
+                submitButton.disabled = true;
+
+                try {
+                  // Simulate API call
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+
+                  // For demo purposes, show success for specific credentials
+                  if (username === 'demo' && password === 'password') {
+                    alert('Login successful!');
+                    window.location.href = '/dashboard';
+                  } else {
+                    alert('Invalid credentials. Try demo/password');
+                  }
+                } catch (error) {
+                  alert('Login failed. Please try again.');
+                } finally {
+                  submitButton.textContent = 'Login';
+                  submitButton.disabled = false;
+                }
+              }
+            });
+
+            function handleSocialLogin(provider) {
+              alert(\`\${provider} login coming soon!\`);
+            }
+
+            function handleForgotPassword(e) {
+              e.preventDefault();
+              alert('Password reset functionality coming soon!');
+            }
+          </script>
         </body>
         </html>
       `;
