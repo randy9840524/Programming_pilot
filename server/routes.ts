@@ -333,6 +333,7 @@ Remember to:
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
           <style>
             body {
               margin: 0;
@@ -408,29 +409,61 @@ Remember to:
             .submit-button:active {
               transform: translateY(1px);
             }
-            .social-login {
-              margin-top: 2rem;
+            .social-login-text {
               text-align: center;
+              color: #666;
+              font-size: 0.9rem;
+              margin-bottom: 1rem;
             }
-            .social-buttons {
+            .social-login-buttons {
               display: grid;
               grid-template-columns: repeat(3, 1fr);
-              gap: 0.5rem;
-              margin-top: 1rem;
+              gap: 10px;
+              margin-top: 20px;
             }
             .social-button {
-              padding: 0.5rem;
-              border: 1px solid #d1d5db;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 8px;
+              border: 1px solid #ddd;
               border-radius: 4px;
               background: white;
               cursor: pointer;
-              transition: background-color 0.2s, transform 0.1s;
+              transition: all 0.2s;
             }
             .social-button:hover {
-              background: #f3f4f6;
+              background: #f8f9fa;
+              transform: translateY(-1px);
             }
-            .social-button:active {
-              transform: translateY(1px);
+            .social-button i {
+              font-size: 1.2rem;
+            }
+            .social-button.facebook i {
+              color: #1877f2;
+            }
+            .social-button.google i {
+              color: #ea4335;
+            }
+            .social-button.github i {
+              color: #333;
+            }
+            .divider {
+              display: flex;
+              align-items: center;
+              text-align: center;
+              margin: 20px 0;
+            }
+            .divider::before,
+            .divider::after {
+              content: '';
+              flex: 1;
+              border-bottom: 1px solid #ddd;
+            }
+            .divider span {
+              padding: 0 10px;
+              color: #666;
+              font-size: 0.9rem;
             }
             .terms {
               text-align: center;
@@ -481,18 +514,19 @@ Remember to:
               <div class="terms">
                 By logging in you accept our latest Terms and Conditions
               </div>
-              <div class="social-login">
-                <div style="position: relative; text-align: center; margin: 1rem 0;">
-                  <div style="border-top: 1px solid #d1d5db; position: absolute; top: 50%; width: 100%;"></div>
-                  <span style="background: white; padding: 0 0.5rem; position: relative; color: #6b7280; font-size: 0.875rem;">
-                    Or login with
-                  </span>
-                </div>
-                <div class="social-buttons">
-                  <button type="button" class="social-button" onclick="handleSocialLogin('facebook')">FB</button>
-                  <button type="button" class="social-button" onclick="handleSocialLogin('google')">G</button>
-                  <button type="button" class="social-button" onclick="handleSocialLogin('github')">GH</button>
-                </div>
+              <div class="divider">
+                <span>Or login with</span>
+              </div>
+              <div class="social-login-buttons">
+                <button onclick="handleSocialLogin('facebook')" class="social-button facebook">
+                  <i class="fab fa-facebook-f"></i>
+                </button>
+                <button onclick="handleSocialLogin('google')" class="social-button google">
+                  <i class="fab fa-google"></i>
+                </button>
+                <button onclick="handleSocialLogin('github')" class="social-button github">
+                  <i class="fab fa-github"></i>
+                </button>
               </div>
             </form>
           </div>
@@ -545,7 +579,17 @@ Remember to:
             });
 
             function handleSocialLogin(provider) {
-              alert(\`\${provider} login coming soon!\`);
+              // Navigate to the appropriate auth URL based on provider
+              const authUrls = {
+                facebook: '/auth/facebook',
+                google: '/auth/google',
+                github: '/auth/github'
+              };
+
+              const url = authUrls[provider];
+              if (url) {
+                window.location.href = url;
+              }
             }
 
             function handleForgotPassword(e) {
