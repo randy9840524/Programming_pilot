@@ -97,7 +97,8 @@ export default function NavigationBar() {
                 throw new Error('Failed to generate preview');
               }
 
-              const { preview } = await previewResponse.json();
+              // Get the HTML content directly
+              const preview = await previewResponse.text();
 
               // Create blob and URL for preview
               const blob = new Blob([preview], { type: 'text/html' });

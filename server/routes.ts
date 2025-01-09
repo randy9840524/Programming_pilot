@@ -306,7 +306,8 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
     } catch (error: any) {
       console.error("AI Analysis failed:", error);
       res.status(500).json({
-        message: error.message || "Failed to get AI response"
+        message: error.message || "Failed to get AI response",
+        error: error.toString()
       });
     }
   });
@@ -331,19 +332,24 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
         }
 
         const data = await analyzeResponse.json();
-        if (typeof data.response !== 'string') {
-          throw new Error('Invalid response format from analyze endpoint');
-        }
-        res.json({ preview: data.response });
+
+        // Extract HTML content from the AI response
+        const preview = data.response;
+
+        // Send response with correct content type
+        res.setHeader('Content-Type', 'text/html');
+        res.send(preview);
       } else {
-        if (typeof response !== 'string') {
-          throw new Error('Invalid response format');
-        }
-        res.json({ preview: response });
+        // Send direct HTML response
+        res.setHeader('Content-Type', 'text/html');
+        res.send(response);
       }
     } catch (error: any) {
       console.error("Preview generation failed:", error);
-      res.status(500).json({ message: error.message || "Failed to generate preview" });
+      res.status(500).json({ 
+        message: error.message || "Failed to generate preview",
+        error: error.toString()
+      });
     }
   });
 
