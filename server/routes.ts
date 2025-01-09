@@ -488,6 +488,15 @@ Remember to:
             .forgot-password a:hover {
               text-decoration: underline;
             }
+            .login-options {
+              margin-top: 1rem;
+            }
+            .login-options button {
+              font-weight: normal;
+            }
+            .space-y-4 > * {
+              margin-bottom: 1rem;
+            }
           </style>
         </head>
         <body>
@@ -514,6 +523,17 @@ Remember to:
               <div class="terms">
                 By logging in you accept our latest Terms and Conditions
               </div>
+
+              <div class="login-options mt-4 text-center">
+                <button 
+                  type="button" 
+                  onclick="toggleForm('register')"
+                  id="createAccountBtn"
+                  class="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer">
+                  Need an account? Create one
+                </button>
+              </div>
+
               <div class="divider">
                 <span>Or login with</span>
               </div>
@@ -529,9 +549,61 @@ Remember to:
                 </button>
               </div>
             </form>
+
+            <!-- Registration Form -->
+            <form id="registerForm" style="display: none;" class="space-y-4">
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="registerEmail" placeholder="Enter your email" required />
+                <div id="registerEmailError" class="error-message"></div>
+              </div>
+              <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="registerUsername" placeholder="Choose a username" required />
+                <div id="registerUsernameError" class="error-message"></div>
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="registerPassword" placeholder="Create a password" required />
+                <div id="registerPasswordError" class="error-message"></div>
+              </div>
+              <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" required />
+                <div id="registerConfirmPasswordError" class="error-message"></div>
+              </div>
+              <button type="submit" class="submit-button">Create Account</button>
+
+              <div class="login-options mt-4 text-center">
+                <button 
+                  type="button"
+                  onclick="toggleForm('login')"
+                  id="loginBtn"
+                  class="text-sm text-blue-600 hover:text-blue-800 underline cursor-pointer">
+                  Already have an account? Login
+                </button>
+              </div>
+
+              <div class="terms">
+                By creating an account you accept our latest Terms and Conditions
+              </div>
+            </form>
           </div>
 
           <script>
+            function toggleForm(formType) {
+              const loginForm = document.getElementById('loginForm');
+              const registerForm = document.getElementById('registerForm');
+
+              if (formType === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+              } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+              }
+            }
+
             document.getElementById('loginForm').addEventListener('submit', async (e) => {
               e.preventDefault();
 
@@ -573,6 +645,60 @@ Remember to:
                   alert('Login failed. Please try again.');
                 } finally {
                   submitButton.textContent = 'Login';
+                  submitButton.disabled = false;
+                }
+              }
+            });
+
+            document.getElementById('registerForm').addEventListener('submit', async (e) => {
+              e.preventDefault();
+
+              // Reset error messages
+              const errorElements = document.querySelectorAll('.error-message');
+              errorElements.forEach(el => el.textContent = '');
+
+              const email = document.getElementById('registerEmail').value;
+              const username = document.getElementById('registerUsername').value;
+              const password = document.getElementById('registerPassword').value;
+              const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+              // Validation
+              let hasError = false;
+
+              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                document.getElementById('registerEmailError').textContent = 'Valid email is required';
+                hasError = true;
+              }
+
+              if (!username || username.length < 3) {
+                document.getElementById('registerUsernameError').textContent = 'Username must be at least 3 characters';
+                hasError = true;
+              }
+
+              if (!password || password.length < 6) {
+                document.getElementById('registerPasswordError').textContent = 'Password must be at least 6 characters';
+                hasError = true;
+              }
+
+              if (password !== confirmPassword) {
+                document.getElementById('registerConfirmPasswordError').textContent = 'Passwords do not match';
+                hasError = true;
+              }
+
+              if (!hasError) {
+                const submitButton = e.target.querySelector('.submit-button');
+                submitButton.textContent = 'Creating Account...';
+                submitButton.disabled = true;
+
+                try {
+                  // Simulate API call
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  alert('Account created successfully! Please login.');
+                  toggleForm('login');
+                } catch (error) {
+                  alert('Registration failed. Please try again.');
+                } finally {
+                  submitButton.textContent = 'Create Account';
                   submitButton.disabled = false;
                 }
               }
