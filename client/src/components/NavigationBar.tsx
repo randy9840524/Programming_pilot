@@ -78,57 +78,66 @@ export default function NavigationBar() {
           reader.onload = async (e) => {
             const base64Data = e.target?.result?.toString().split(',')[1];
             if (base64Data) {
-              // Send file for analysis
-              const analyzeResponse = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  files: [{
-                    type: file.type,
-                    name: file.name,
-                    data: base64Data
-                  }],
-                  prompt: "Please analyze this content and create a pixel-perfect HTML/CSS implementation"
-                }),
-              });
+              try {
+                // Send file for analysis
+                const analyzeResponse = await fetch('/api/analyze', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    files: [{
+                      type: file.type,
+                      name: file.name,
+                      data: base64Data
+                    }],
+                    prompt: "Please analyze this content and create a pixel-perfect HTML/CSS implementation"
+                  }),
+                });
 
-              if (!analyzeResponse.ok) {
-                throw new Error('Failed to analyze file');
+                if (!analyzeResponse.ok) {
+                  throw new Error(`Failed to analyze file: ${await analyzeResponse.text()}`);
+                }
+
+                const { response: analyzedContent } = await analyzeResponse.json();
+
+                // Get preview of the analyzed content
+                const previewResponse = await fetch('/api/preview', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ response: analyzedContent }),
+                });
+
+                if (!previewResponse.ok) {
+                  throw new Error(`Failed to generate preview: ${await previewResponse.text()}`);
+                }
+
+                // Get the preview HTML directly as text
+                const previewHtml = await previewResponse.text();
+                setPreviewContent(previewHtml);
+
+                toast({
+                  title: "Success",
+                  description: "Preview generated successfully",
+                });
+              } catch (error: any) {
+                console.error('Error processing file:', error);
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to process file",
+                  variant: "destructive",
+                });
               }
-
-              const { response: analyzedContent } = await analyzeResponse.json();
-
-              // Get preview of the analyzed content
-              const previewResponse = await fetch('/api/preview', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ response: analyzedContent }),
-              });
-
-              if (!previewResponse.ok) {
-                throw new Error('Failed to generate preview');
-              }
-
-              // Get the preview HTML directly
-              const previewHtml = await previewResponse.text();
-              setPreviewContent(previewHtml);
-
-              toast({
-                title: "Success",
-                description: "Preview generated successfully",
-              });
             }
           };
           reader.readAsDataURL(file);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error processing file:', error);
           toast({
             title: "Error",
-            description: "Failed to process file",
+            description: error.message || "Failed to process file",
             variant: "destructive",
           });
         } finally {
