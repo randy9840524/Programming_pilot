@@ -190,7 +190,7 @@ export default function NavigationBar() {
       </nav>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+        <DialogContent className="max-w-[90vw] w-[1200px] h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Live Preview</DialogTitle>
             <DialogDescription>
