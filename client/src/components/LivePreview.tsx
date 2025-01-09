@@ -5,9 +5,11 @@ import { Card } from "@/components/ui/card";
 interface LivePreviewProps {
   htmlContent?: string;
   isLoading?: boolean;
+  code?: string;
+  isBuilding?: boolean;
 }
 
-export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps) {
+export default function LivePreview({ htmlContent, isLoading, code, isBuilding }: LivePreviewProps) {
   const [error, setError] = useState<string | null>(null);
   const [sanitizedContent, setSanitizedContent] = useState<string | null>(null);
 
@@ -20,17 +22,22 @@ export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps
         console.error('Error processing HTML:', err);
         setError('Error processing preview content');
       }
+    } else if (code) {
+      setSanitizedContent(code);
+      setError(null);
     } else {
       setSanitizedContent(null);
     }
-  }, [htmlContent]);
+  }, [htmlContent, code]);
 
-  if (isLoading) {
+  if (isLoading || isBuilding) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Generating preview...</p>
+          <p className="text-sm text-muted-foreground">
+            {isBuilding ? "Building preview..." : "Generating preview..."}
+          </p>
         </div>
       </div>
     );

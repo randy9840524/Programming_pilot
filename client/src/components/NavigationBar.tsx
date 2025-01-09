@@ -4,8 +4,6 @@ import {
   Upload,
   FileCode,
   Settings,
-  Download,
-  Copy,
   MessageCircle,
   Code2,
   Globe,
