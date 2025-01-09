@@ -16,9 +16,21 @@ export default function LivePreview({ htmlContent, isLoading, code, isBuilding }
   useEffect(() => {
     if (htmlContent) {
       try {
-        // Add base target to open links in new tab
-        const contentWithBase = htmlContent.replace('<head>', '<head><base target="_blank">');
-        setSanitizedContent(contentWithBase);
+        // Add base target to open links in new tab and ensure proper viewport
+        const contentWithMeta = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <base target="_blank">
+            </head>
+            <body>
+              ${htmlContent}
+            </body>
+          </html>
+        `;
+        setSanitizedContent(contentWithMeta);
         setError(null);
       } catch (err) {
         console.error('Error processing HTML:', err);
@@ -75,6 +87,7 @@ export default function LivePreview({ htmlContent, isLoading, code, isBuilding }
         title="Live Preview"
         style={{
           minHeight: '100%',
+          width: '100%',
           backgroundColor: 'white'
         }}
       />

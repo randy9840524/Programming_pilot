@@ -70,6 +70,12 @@ export default function NavigationBar() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCloneReady, setIsCloneReady] = useState(false);
 
+  const handlePreview = () => {
+    if (isCloneReady) {
+      setIsPreviewOpen(true);
+    }
+  };
+
   const handleClone = async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -163,7 +169,7 @@ export default function NavigationBar() {
     { 
       icon: <Code2 className="h-5 w-5" />, 
       tooltip: isCloneReady ? "Preview Ready!" : "Real-Time Preview", 
-      path: "/preview",
+      onClick: handlePreview,
       variant: isCloneReady ? 'success' : 'default'
     },
     { icon: <FileCode className="h-5 w-5" />, tooltip: "Backend Development", path: "/backend" },
@@ -183,7 +189,7 @@ export default function NavigationBar() {
             key={index}
             icon={item.icon}
             tooltip={item.tooltip}
-            onClick={item.onClick || (() => setLocation(item.path!))}
+            onClick={item.onClick || (() => item.path && setLocation(item.path))}
             active={item.path ? location === item.path : false}
             variant={item.variant}
           />
