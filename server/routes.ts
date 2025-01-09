@@ -324,7 +324,7 @@ Remember to:
     }
   });
 
-  // Preview endpoint with JavaScript game support
+  // Preview endpoint with Login portal
   app.post("/api/preview", async (_req: Request, res: Response) => {
     try {
       const preview = `
@@ -336,46 +336,122 @@ Remember to:
           <style>
             body {
               margin: 0;
-              padding: 20px;
+              padding: 0;
               min-height: 100vh;
-              background: #000;
+              background: #dc2626;
               display: flex;
               justify-content: center;
               align-items: center;
               font-family: system-ui, sans-serif;
-              color: #fff;
             }
-            canvas {
-              background: #000;
-              max-width: 100%;
-              height: auto;
-              border: 2px solid #333;
-              box-shadow: 0 0 20px rgba(255,255,255,0.1);
+            .login-container {
+              width: 100%;
+              max-width: 400px;
+              background: white;
+              padding: 2rem;
+              border-radius: 8px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              margin: 1rem;
             }
-            .game-instructions {
-              margin-top: 20px;
-              font-size: 14px;
-              color: #888;
+            .logo {
               text-align: center;
+              margin-bottom: 2rem;
+            }
+            .logo-circle {
+              width: 40px;
+              height: 40px;
+              background: #dc2626;
+              border-radius: 50%;
+              margin: 0 auto 1rem;
+            }
+            .form-group {
+              margin-bottom: 1rem;
+            }
+            .form-group label {
+              display: block;
+              margin-bottom: 0.5rem;
+              font-size: 0.875rem;
+              color: #374151;
+            }
+            .form-group input {
+              width: 100%;
+              padding: 0.5rem;
+              border: 1px solid #d1d5db;
+              border-radius: 4px;
+              font-size: 1rem;
+            }
+            .submit-button {
+              width: 100%;
+              padding: 0.75rem;
+              background: #2563eb;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              font-size: 1rem;
+              cursor: pointer;
+            }
+            .submit-button:hover {
+              background: #1d4ed8;
+            }
+            .social-login {
+              margin-top: 2rem;
+              text-align: center;
+            }
+            .social-buttons {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 0.5rem;
+              margin-top: 1rem;
+            }
+            .social-button {
+              padding: 0.5rem;
+              border: 1px solid #d1d5db;
+              border-radius: 4px;
+              background: white;
+              cursor: pointer;
+            }
+            .terms {
+              text-align: center;
+              font-size: 0.75rem;
+              color: #6b7280;
+              margin-top: 1rem;
             }
           </style>
         </head>
         <body>
-          <div id="gameContainer">
-            <canvas id="pongCanvas" width="800" height="400"></canvas>
-            <div class="game-instructions">
-              Use ↑ and ↓ keys to control the right paddle<br>
-              Collect power-ups to gain advantages!
+          <div class="login-container">
+            <div class="logo">
+              <div class="logo-circle"></div>
+              <h1 style="font-size: 1.5rem; font-weight: bold;">ClientZone</h1>
             </div>
+            <form>
+              <div class="form-group">
+                <label>Username</label>
+                <input type="text" placeholder="Enter your username" />
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="password" placeholder="Enter your password" />
+              </div>
+              <button type="submit" class="submit-button">Login</button>
+              <div class="terms">
+                By logging in you accept our latest Terms and Conditions
+              </div>
+              <div class="social-login">
+                <div style="position: relative; text-align: center; margin: 1rem 0;">
+                  <div style="border-top: 1px solid #d1d5db; position: absolute; top: 50%; width: 100%;"></div>
+                  <span style="background: white; padding: 0 0.5rem; position: relative; color: #6b7280; font-size: 0.875rem;">
+                    Or login with
+                  </span>
+                </div>
+                <div class="social-buttons">
+                  <button class="social-button">FB</button>
+                  <button class="social-button">G</button>
+                  <button class="social-button">GH</button>
+                </div>
+              </div>
+            </form>
           </div>
-          <script>
-            try {
-              ${createPongGame()}
-            } catch (error) {
-              document.getElementById('gameContainer').innerHTML = 
-                '<div style="color: red; padding: 20px;"><strong>Error:</strong><br>' + error.message + '</div>';
-            }
-          </script>
         </body>
         </html>
       `;
