@@ -16,7 +16,9 @@ export default function LivePreview({ htmlContent, isLoading, code, isBuilding }
   useEffect(() => {
     if (htmlContent) {
       try {
-        setSanitizedContent(htmlContent);
+        // Add base target to open links in new tab
+        const contentWithBase = htmlContent.replace('<head>', '<head><base target="_blank">');
+        setSanitizedContent(contentWithBase);
         setError(null);
       } catch (err) {
         console.error('Error processing HTML:', err);
@@ -53,25 +55,29 @@ export default function LivePreview({ htmlContent, isLoading, code, isBuilding }
 
   if (!sanitizedContent) {
     return (
-      <div className="h-full flex items-center justify-center border-2 border-dashed border-muted rounded-lg">
-        <div className="text-center p-4">
-          <p className="text-sm text-muted-foreground mb-2">No preview available</p>
-          <p className="text-xs text-muted-foreground">Upload a file to see the preview</p>
+      <div className="h-full flex items-center justify-center border-2 border-dashed border-muted rounded-lg p-8">
+        <div className="text-center max-w-md">
+          <p className="text-lg font-medium text-muted-foreground mb-2">No preview available</p>
+          <p className="text-sm text-muted-foreground">
+            Upload an image, document, or provide code to see the preview
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden">
-      <div className="flex-1 min-h-0 w-full">
-        <iframe
-          srcDoc={sanitizedContent}
-          className="w-full h-full border-0 rounded-lg bg-white"
-          sandbox="allow-scripts allow-same-origin"
-          title="Live Preview"
-        />
-      </div>
+    <div className="h-full w-full flex flex-col overflow-hidden bg-white">
+      <iframe
+        srcDoc={sanitizedContent}
+        className="w-full h-full border-0"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+        title="Live Preview"
+        style={{
+          minHeight: '100%',
+          backgroundColor: 'white'
+        }}
+      />
     </div>
   );
 }

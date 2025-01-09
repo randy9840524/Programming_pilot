@@ -17,8 +17,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import LivePreview from "./LivePreview";
 
 interface NavItemProps {
@@ -177,14 +177,14 @@ export default function NavigationBar() {
       </nav>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-[90vw] w-[1200px] h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Live Preview</DialogTitle>
+        <DialogContent className="max-w-[95vw] w-[1400px] h-[95vh] flex flex-col p-0">
+          <DialogHeader className="p-6 flex-shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+            <DialogTitle>Website Preview</DialogTitle>
             <DialogDescription>
-              Preview of the cloned application
+              Generated preview of the website
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden mt-4">
+          <div className="flex-1 overflow-hidden">
             <LivePreview
               htmlContent={previewContent || undefined}
               isLoading={isLoading}
