@@ -2,13 +2,19 @@ import { Switch, Route } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import EditorPage from "./pages/EditorPage";
+import NavigationBar from "./components/NavigationBar";
 
 function App() {
   return (
-    <Switch>
-      <Route path="/" component={EditorPage} />
-      <Route component={NotFound} />
-    </Switch>
+    <div className="flex h-screen bg-background">
+      <NavigationBar />
+      <main className="flex-1 overflow-auto pl-16"> {/* Add padding for NavigationBar */}
+        <Switch>
+          <Route path="/" component={EditorPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </main>
+    </div>
   );
 }
 
