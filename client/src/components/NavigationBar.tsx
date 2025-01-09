@@ -72,6 +72,7 @@ export default function NavigationBar() {
         try {
           setIsLoading(true);
           setIsPreviewOpen(true);
+          setPreviewContent(null);
 
           const reader = new FileReader();
           reader.onload = async (e) => {

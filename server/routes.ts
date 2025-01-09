@@ -331,18 +331,30 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
           throw new Error('Failed to analyze content');
         }
 
-        const data = await analyzeResponse.json();
+        const { response: analyzedContent } = await analyzeResponse.json();
 
         // Extract HTML content from the AI response
-        const preview = data.response;
+        // Find the HTML content between ```html and ``` if it exists
+        let htmlContent = analyzedContent;
+        const htmlMatch = analyzedContent.match(/```html\n([\s\S]*?)```/);
+        if (htmlMatch) {
+          htmlContent = htmlMatch[1];
+        }
 
         // Send response with correct content type
         res.setHeader('Content-Type', 'text/html');
-        res.send(preview);
+        res.send(htmlContent);
       } else {
+        // Extract HTML from response if needed
+        let htmlContent = response;
+        const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
+        if (htmlMatch) {
+          htmlContent = htmlMatch[1];
+        }
+
         // Send direct HTML response
         res.setHeader('Content-Type', 'text/html');
-        res.send(response);
+        res.send(htmlContent);
       }
     } catch (error: any) {
       console.error("Preview generation failed:", error);
