@@ -6,13 +6,15 @@ import NavigationBar from "./components/NavigationBar";
 
 function App() {
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       <NavigationBar />
-      <main className="flex-1 overflow-auto pl-16"> {/* Add padding for NavigationBar */}
-        <Switch>
-          <Route path="/" component={EditorPage} />
-          <Route component={NotFound} />
-        </Switch>
+      <main className="flex-1 overflow-auto pl-16 p-4"> {/* Added padding and proper overflow handling */}
+        <div className="container mx-auto max-w-7xl h-full"> {/* Added container with max width */}
+          <Switch>
+            <Route path="/" component={EditorPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
       </main>
     </div>
   );
