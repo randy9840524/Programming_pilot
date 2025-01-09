@@ -3,45 +3,19 @@ import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface LivePreviewProps {
-  code: string;
-  isBuilding: boolean;
+  htmlContent?: string;
+  isLoading?: boolean;
 }
 
-export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
-  const [preview, setPreview] = useState<string | null>(null);
+export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps) {
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const generatePreview = async () => {
-      try {
-        const response = await fetch('/api/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        const data = await response.json();
-        setPreview(data.preview);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message);
-        setPreview(null);
-      }
-    };
-
-    generatePreview();
-  }, []);
-
-  if (isBuilding) {
+  if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Building preview...</p>
+          <p className="text-sm text-muted-foreground">Generating preview...</p>
         </div>
       </div>
     );
@@ -55,19 +29,19 @@ export default function LivePreview({ code, isBuilding }: LivePreviewProps) {
     );
   }
 
-  if (!preview) {
+  if (!htmlContent) {
     return (
       <div className="h-full flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Initializing game preview...</p>
+        <p className="text-sm text-muted-foreground">Upload a file to preview</p>
       </div>
     );
   }
 
   return (
     <iframe
-      srcDoc={preview}
-      className="w-full h-full border-0 rounded-lg bg-black"
-      sandbox="allow-scripts"
+      srcDoc={htmlContent}
+      className="w-full h-full border-0 rounded-lg"
+      sandbox="allow-scripts allow-same-origin"
       title="Live Preview"
     />
   );

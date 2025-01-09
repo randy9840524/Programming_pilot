@@ -14,6 +14,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import LivePreview from "./LivePreview";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -49,6 +58,9 @@ const NavItem = ({ icon, tooltip, onClick, active }: NavItemProps) => {
 export default function NavigationBar() {
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleClone = async () => {
     const input = document.createElement('input');
@@ -58,6 +70,9 @@ export default function NavigationBar() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         try {
+          setIsLoading(true);
+          setIsPreviewOpen(true);
+
           const reader = new FileReader();
           reader.onload = async (e) => {
             const base64Data = e.target?.result?.toString().split(',')[1];
@@ -97,18 +112,8 @@ export default function NavigationBar() {
                 throw new Error('Failed to generate preview');
               }
 
-              // Get the HTML content directly
-              const preview = await previewResponse.text();
-
-              // Create blob and URL for preview
-              const blob = new Blob([preview], { type: 'text/html' });
-              const url = URL.createObjectURL(blob);
-
-              // Open preview in new window
-              const previewWindow = window.open(url, '_blank');
-              if (previewWindow) {
-                previewWindow.focus();
-              }
+              const previewHtml = await previewResponse.text();
+              setPreviewContent(previewHtml);
 
               toast({
                 title: "Success",
@@ -124,6 +129,8 @@ export default function NavigationBar() {
             description: "Failed to process file",
             variant: "destructive",
           });
+        } finally {
+          setIsLoading(false);
         }
       }
     };
@@ -131,46 +138,65 @@ export default function NavigationBar() {
   };
 
   return (
-    <nav className="fixed left-0 top-0 h-full w-16 bg-background border-r flex flex-col items-center py-4 space-y-4 shadow-sm">
-      <NavItem
-        icon={<Home className="h-5 w-5" />}
-        tooltip="Home"
-        onClick={() => setLocation("/")}
-        active={location === "/"}
-      />
+    <>
+      <nav className="fixed left-0 top-0 h-full w-16 bg-background border-r flex flex-col items-center py-4 space-y-4 shadow-sm">
+        <NavItem
+          icon={<Home className="h-5 w-5" />}
+          tooltip="Home"
+          onClick={() => setLocation("/")}
+          active={location === "/"}
+        />
 
-      <NavItem
-        icon={<FileCode className="h-5 w-5" />}
-        tooltip="Code Editor"
-        onClick={() => setLocation("/editor")}
-        active={location === "/editor"}
-      />
+        <NavItem
+          icon={<FileCode className="h-5 w-5" />}
+          tooltip="Code Editor"
+          onClick={() => setLocation("/editor")}
+          active={location === "/editor"}
+        />
 
-      <NavItem
-        icon={<Upload className="h-5 w-5" />}
-        tooltip="Upload & Clone Application"
-        onClick={handleClone}
-      />
+        <NavItem
+          icon={<Upload className="h-5 w-5" />}
+          tooltip="Upload & Clone Application"
+          onClick={handleClone}
+        />
 
-      <NavItem
-        icon={<Download className="h-5 w-5" />}
-        tooltip="Export Application"
-        onClick={() => setLocation("/export")}
-        active={location === "/export"}
-      />
+        <NavItem
+          icon={<Download className="h-5 w-5" />}
+          tooltip="Export Application"
+          onClick={() => setLocation("/export")}
+          active={location === "/export"}
+        />
 
-      <NavItem
-        icon={<Copy className="h-5 w-5" />}
-        tooltip="Clone from Screenshot"
-        onClick={handleClone}
-      />
+        <NavItem
+          icon={<Copy className="h-5 w-5" />}
+          tooltip="Clone from Screenshot"
+          onClick={handleClone}
+        />
 
-      <NavItem
-        icon={<Settings className="h-5 w-5" />}
-        tooltip="Settings"
-        onClick={() => setLocation("/settings")}
-        active={location === "/settings"}
-      />
-    </nav>
+        <NavItem
+          icon={<Settings className="h-5 w-5" />}
+          tooltip="Settings"
+          onClick={() => setLocation("/settings")}
+          active={location === "/settings"}
+        />
+      </nav>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Live Preview</DialogTitle>
+            <DialogDescription>
+              Preview of the cloned application
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 h-full mt-4">
+            <LivePreview 
+              htmlContent={previewContent || undefined}
+              isLoading={isLoading}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
