@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { 
+import {
   Home,
   Upload,
   FileCode,
@@ -79,7 +79,6 @@ export default function NavigationBar() {
             const base64Data = e.target?.result?.toString().split(',')[1];
             if (base64Data) {
               try {
-                // Send file for analysis
                 const analyzeResponse = await fetch('/api/analyze', {
                   method: 'POST',
                   headers: {
@@ -101,7 +100,6 @@ export default function NavigationBar() {
 
                 const { response: analyzedContent } = await analyzeResponse.json();
 
-                // Get preview of the analyzed content
                 const previewResponse = await fetch('/api/preview', {
                   method: 'POST',
                   headers: {
@@ -114,7 +112,6 @@ export default function NavigationBar() {
                   throw new Error(`Failed to generate preview: ${await previewResponse.text()}`);
                 }
 
-                // Get the preview HTML directly as text
                 const previewHtml = await previewResponse.text();
                 setPreviewContent(previewHtml);
 
@@ -193,15 +190,15 @@ export default function NavigationBar() {
       </nav>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Live Preview</DialogTitle>
             <DialogDescription>
               Preview of the cloned application
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 h-full mt-4">
-            <LivePreview 
+          <div className="flex-1 overflow-hidden mt-4">
+            <LivePreview
               htmlContent={previewContent || undefined}
               isLoading={isLoading}
             />

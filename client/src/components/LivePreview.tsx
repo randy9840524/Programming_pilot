@@ -14,7 +14,6 @@ export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps
   useEffect(() => {
     if (htmlContent) {
       try {
-        // Ensure the HTML content is properly formatted
         setSanitizedContent(htmlContent);
         setError(null);
       } catch (err) {
@@ -57,11 +56,15 @@ export default function LivePreview({ htmlContent, isLoading }: LivePreviewProps
   }
 
   return (
-    <iframe
-      srcDoc={sanitizedContent}
-      className="w-full h-full border-0 rounded-lg bg-white"
-      sandbox="allow-scripts allow-same-origin"
-      title="Live Preview"
-    />
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0">
+        <iframe
+          srcDoc={sanitizedContent}
+          className="w-full h-full border-0 rounded-lg bg-white"
+          sandbox="allow-scripts allow-same-origin"
+          title="Live Preview"
+        />
+      </div>
+    </div>
   );
 }
