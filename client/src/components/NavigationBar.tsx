@@ -5,7 +5,13 @@ import {
   FileCode,
   Settings,
   Download,
-  Copy
+  Copy,
+  MessageCircle,
+  Code2,
+  Globe,
+  Github,
+  HelpCircle,
+  Users
 } from "lucide-react";
 import {
   Tooltip,
@@ -145,48 +151,31 @@ export default function NavigationBar() {
     input.click();
   };
 
+  const navItems = [
+    { icon: <Home className="h-5 w-5" />, tooltip: "Home", path: "/" },
+    { icon: <MessageCircle className="h-5 w-5" />, tooltip: "Natural Language Prompt", path: "/prompt" },
+    { icon: <Code2 className="h-5 w-5" />, tooltip: "Real-Time Preview", path: "/preview" },
+    { icon: <FileCode className="h-5 w-5" />, tooltip: "Backend Development", path: "/backend" },
+    { icon: <Globe className="h-5 w-5" />, tooltip: "One-Click Website", path: "/deploy" },
+    { icon: <Github className="h-5 w-5" />, tooltip: "GitHub Integration", path: "/github" },
+    { icon: <HelpCircle className="h-5 w-5" />, tooltip: "AI-Assisted Help", path: "/help" },
+    { icon: <Users className="h-5 w-5" />, tooltip: "Collaboration", path: "/collab" },
+    { icon: <Upload className="h-5 w-5" />, tooltip: "Upload & Clone", onClick: handleClone },
+    { icon: <Settings className="h-5 w-5" />, tooltip: "Settings", path: "/settings" },
+  ];
+
   return (
     <>
       <nav className="fixed left-0 top-0 h-full w-16 bg-background border-r flex flex-col items-center py-4 space-y-4 shadow-sm">
-        <NavItem
-          icon={<Home className="h-5 w-5" />}
-          tooltip="Home"
-          onClick={() => setLocation("/")}
-          active={location === "/"}
-        />
-
-        <NavItem
-          icon={<FileCode className="h-5 w-5" />}
-          tooltip="Code Editor"
-          onClick={() => setLocation("/editor")}
-          active={location === "/editor"}
-        />
-
-        <NavItem
-          icon={<Upload className="h-5 w-5" />}
-          tooltip="Upload & Clone Application"
-          onClick={handleClone}
-        />
-
-        <NavItem
-          icon={<Download className="h-5 w-5" />}
-          tooltip="Export Application"
-          onClick={() => setLocation("/export")}
-          active={location === "/export"}
-        />
-
-        <NavItem
-          icon={<Copy className="h-5 w-5" />}
-          tooltip="Clone from Screenshot"
-          onClick={handleClone}
-        />
-
-        <NavItem
-          icon={<Settings className="h-5 w-5" />}
-          tooltip="Settings"
-          onClick={() => setLocation("/settings")}
-          active={location === "/settings"}
-        />
+        {navItems.map((item, index) => (
+          <NavItem
+            key={index}
+            icon={item.icon}
+            tooltip={item.tooltip}
+            onClick={item.onClick || (() => setLocation(item.path!))}
+            active={item.path ? location === item.path : false}
+          />
+        ))}
       </nav>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
