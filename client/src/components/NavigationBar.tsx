@@ -9,7 +9,8 @@ import {
   Globe,
   Github,
   HelpCircle,
-  Users
+  Users,
+  Loader2
 } from "lucide-react";
 import {
   Tooltip,
@@ -35,6 +36,7 @@ interface NavItemProps {
   onClick: () => void;
   active?: boolean;
   variant?: 'default' | 'success';
+  disabled?: boolean;
 }
 
 interface NavItem {
@@ -43,20 +45,23 @@ interface NavItem {
   path?: string;
   onClick?: () => void;
   variant?: 'default' | 'success';
+  disabled?: boolean;
 }
 
-const NavItem = ({ icon, tooltip, onClick, active, variant = 'default' }: NavItemProps) => {
+const NavItem = ({ icon, tooltip, onClick, active, variant = 'default', disabled }: NavItemProps) => {
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             onClick={onClick}
+            disabled={disabled}
             className={cn(
               "p-2 rounded-lg transition-colors",
               active && "bg-primary text-primary-foreground",
-              variant === 'success' && "bg-green-500 text-white hover:bg-green-600",
-              variant === 'default' && !active && "hover:bg-accent hover:text-accent-foreground"
+              variant === 'success' && !disabled && "bg-green-500 text-white hover:bg-green-600",
+              variant === 'default' && !active && !disabled && "hover:bg-accent hover:text-accent-foreground",
+              disabled && "opacity-50 cursor-not-allowed"
             )}
           >
             {icon}
@@ -77,6 +82,7 @@ export default function NavigationBar() {
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCloneReady, setIsCloneReady] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePreview = () => {
     if (isCloneReady) {
@@ -93,6 +99,7 @@ export default function NavigationBar() {
       if (file) {
         try {
           setIsLoading(true);
+          setIsProcessing(true);
           setIsPreviewOpen(true);
           setPreviewContent(null);
           setIsCloneReady(false);
@@ -174,6 +181,7 @@ export default function NavigationBar() {
           setIsCloneReady(false);
         } finally {
           setIsLoading(false);
+          setIsProcessing(false);
         }
       }
     };
@@ -184,17 +192,23 @@ export default function NavigationBar() {
     { icon: <Home className="h-5 w-5" />, tooltip: "Home", path: "/" },
     { icon: <MessageCircle className="h-5 w-5" />, tooltip: "Natural Language Prompt", path: "/prompt" },
     { 
-      icon: <Code2 className="h-5 w-5" />, 
-      tooltip: isCloneReady ? "Preview Ready!" : "Real-Time Preview", 
+      icon: isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Code2 className="h-5 w-5" />, 
+      tooltip: isProcessing ? "Processing..." : isCloneReady ? "Preview Ready!" : "Real-Time Preview", 
       onClick: handlePreview,
-      variant: isCloneReady ? 'success' : 'default'
+      variant: isCloneReady ? 'success' : 'default',
+      disabled: isProcessing || !isCloneReady
     },
     { icon: <FileCode className="h-5 w-5" />, tooltip: "Backend Development", path: "/backend" },
     { icon: <Globe className="h-5 w-5" />, tooltip: "One-Click Website", path: "/deploy" },
     { icon: <Github className="h-5 w-5" />, tooltip: "GitHub Integration", path: "/github" },
     { icon: <HelpCircle className="h-5 w-5" />, tooltip: "AI-Assisted Help", path: "/help" },
     { icon: <Users className="h-5 w-5" />, tooltip: "Collaboration", path: "/collab" },
-    { icon: <Upload className="h-5 w-5" />, tooltip: "Upload & Clone", onClick: handleClone },
+    { 
+      icon: isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />, 
+      tooltip: isLoading ? "Uploading..." : "Upload & Clone", 
+      onClick: handleClone,
+      disabled: isLoading 
+    },
     { icon: <Settings className="h-5 w-5" />, tooltip: "Settings", path: "/settings" },
   ];
 
@@ -209,6 +223,7 @@ export default function NavigationBar() {
             onClick={item.onClick || (() => item.path && setLocation(item.path))}
             active={item.path ? location === item.path : false}
             variant={item.variant}
+            disabled={item.disabled}
           />
         ))}
       </nav>

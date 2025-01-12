@@ -30,6 +30,7 @@ interface FilePreview {
   url: string;
   data?: string;
   content?: string;
+  isImage?: boolean;
 }
 
 export default function AIAssistant() {
@@ -63,13 +64,14 @@ export default function AIAssistant() {
   const processFile = async (file: File) => {
     try {
       const reader = new FileReader();
+      const isImage = file.type.startsWith('image/');
 
       reader.onload = async (e) => {
         const url = e.target?.result as string;
         const base64Data = url.split(',')[1];
 
         let content: string | undefined;
-        if (!file.type.startsWith('image/')) {
+        if (!isImage) {
           const textReader = new FileReader();
           content = await new Promise((resolve) => {
             textReader.onload = (e) => resolve(e.target?.result as string);
@@ -77,20 +79,29 @@ export default function AIAssistant() {
           });
         }
 
-        setFiles(prev => [...prev, {
+        const newFile: FilePreview = {
           name: file.name,
           type: file.type,
           url,
           data: base64Data,
-          content
-        }]);
+          content,
+          isImage
+        };
+
+        setFiles(prev => [...prev, newFile]);
+
+        setMessages(prev => [
+          ...prev, 
+          `Uploaded ${isImage ? 'image' : 'code'} file: ${file.name}`
+        ]);
 
         toast({
           title: "File uploaded",
           description: `Successfully uploaded ${file.name}`,
         });
 
-        setMessages(prev => [...prev, `Uploaded ${file.type.startsWith('image/') ? 'image' : 'code'} file: ${file.name}`]);
+        // Automatically scroll to the bottom
+        setTimeout(scrollToBottom, 100);
       };
 
       reader.onerror = () => {
@@ -149,7 +160,9 @@ export default function AIAssistant() {
           prompt: `Generate a preview application based on: ${input}\nFiles: ${files.map(f => f.name).join(', ')}`,
           files: files.map(f => ({
             type: f.type,
-            data: f.data
+            name: f.name,
+            data: f.data,
+            isImage: f.type.startsWith('image/')
           }))
         }),
       });
@@ -157,17 +170,11 @@ export default function AIAssistant() {
       if (!response.ok) throw new Error(await response.text());
 
       const data = await response.json();
-      const previewResponse = await fetch('/api/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: data.response }),
-      });
-
-      if (!previewResponse.ok) throw new Error(await previewResponse.text());
-
-      const previewData = await previewResponse.json();
-      setPreviewCode(previewData.preview);
+      setPreviewCode(data.response);
       setMessages(prev => [...prev, `Preview generated: ${data.response}`]);
+
+      // Automatically scroll to the bottom
+      setTimeout(scrollToBottom, 100);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -330,42 +337,42 @@ export default function AIAssistant() {
 
                   {files.map((file) => (
                     <Card key={file.name} className="overflow-hidden">
-                      <CardContent className="p-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-1">
-                            {file.type.startsWith('image/') ? (
-                              <ImageIcon className="h-3 w-3" />
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            {file.isImage ? (
+                              <ImageIcon className="h-4 w-4" />
                             ) : file.type.includes('javascript') || file.type.includes('typescript') ? (
-                              <Code2 className="h-3 w-3" />
+                              <Code2 className="h-4 w-4" />
                             ) : file.type.includes('html') ? (
-                              <Globe className="h-3 w-3" />
+                              <Globe className="h-4 w-4" />
                             ) : (
-                              <FileText className="h-3 w-3" />
+                              <FileText className="h-4 w-4" />
                             )}
-                            <span className="text-xs font-medium">{file.name}</span>
+                            <span className="font-medium text-sm">{file.name}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-8 w-8 p-0"
                               onClick={() => window.open(file.url)}
                             >
-                              <Eye className="h-3 w-3" />
+                              <Eye className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0"
+                              className="h-8 w-8 p-0"
                               onClick={() => removeFile(file.name)}
                             >
-                              <X className="h-3 w-3" />
+                              <X className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
 
-                        {file.type.startsWith('image/') ? (
-                          <div className="relative aspect-[16/9] bg-muted rounded-md overflow-hidden">
+                        {file.isImage ? (
+                          <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
                             <img
                               src={file.url}
                               alt={file.name}
@@ -373,7 +380,7 @@ export default function AIAssistant() {
                             />
                           </div>
                         ) : (
-                          <pre className="bg-secondary p-2 rounded-md overflow-x-auto max-h-[120px] text-[10px]">
+                          <pre className="bg-muted p-3 rounded-md overflow-x-auto max-h-[200px] text-sm">
                             <code>
                               {file.content || 'Unable to preview file content'}
                             </code>
