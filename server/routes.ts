@@ -319,7 +319,7 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   // Preview endpoint
   app.post("/api/preview", async (req: Request, res: Response) => {
     try {
-      const { response } = req.body;
+      const { response, originalImage } = req.body;
 
       // If no response provided, get one from the AI
       if (!response) {
@@ -353,11 +353,108 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .property-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .property-item {
+      border: 1px solid #e7e7e7;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .property-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .property-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .property-info {
+      padding: 12px;
+    }
+
+    .property-type {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 4px;
+    }
+
+    .search-bar {
+      background: #febb02;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .search-bar form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input,
+    .search-bar select {
+      padding: 10px;
+      border: 1px solid #e7e7e7;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-bar button {
+      background: #0071c2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .search-bar button:hover {
+      background: #005999;
+    }
+
+    .header {
+      background: #003580;
+      color: white;
+      padding: 20px;
+      margin: -20px -20px 20px -20px;
+    }
+
+    .header h1 {
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .property-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
     }
   </style>
 </head>
@@ -365,6 +462,13 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   ${htmlContent}
 </body>
 </html>`;
+        }
+
+        // Add image embedding if there's an original image
+        if (originalImage) {
+          const imageTag = `<img src="data:${originalImage.type};base64,${originalImage.data}" 
+            alt="Property" class="property-image">`;
+          htmlContent = htmlContent.replace(/<img[^>]+>/g, imageTag);
         }
 
         res.setHeader('Content-Type', 'text/html');
@@ -378,6 +482,14 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
         htmlContent = htmlMatch[1];
       }
 
+      // Add image embedding if there's an original image
+      if (originalImage) {
+        const imageTag = `<img src="data:${originalImage.type};base64,${originalImage.data}" 
+          alt="Property" class="property-image">`;
+        htmlContent = htmlContent.replace(/<img[^>]+>/g, imageTag);
+      }
+
+      // Ensure proper HTML structure and styling
       if (!htmlContent.includes('<style>')) {
         htmlContent = `
 <!DOCTYPE html>
@@ -386,11 +498,108 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       font-family: system-ui, -apple-system, sans-serif;
       line-height: 1.5;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .property-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .property-item {
+      border: 1px solid #e7e7e7;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .property-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .property-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .property-info {
+      padding: 12px;
+    }
+
+    .property-type {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 4px;
+    }
+
+    .search-bar {
+      background: #febb02;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .search-bar form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input,
+    .search-bar select {
+      padding: 10px;
+      border: 1px solid #e7e7e7;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-bar button {
+      background: #0071c2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .search-bar button:hover {
+      background: #005999;
+    }
+
+    .header {
+      background: #003580;
+      color: white;
+      padding: 20px;
+      margin: -20px -20px 20px -20px;
+    }
+
+    .header h1 {
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .property-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
     }
   </style>
 </head>
@@ -534,6 +743,7 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   });
   return httpServer;
 }
+
 
 
 // Placeholder functions -  These need to be implemented separately.

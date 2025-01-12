@@ -102,6 +102,7 @@ export default function NavigationBar() {
             const base64Data = e.target?.result?.toString().split(',')[1];
             if (base64Data) {
               try {
+                // Send file for analysis
                 const analyzeResponse = await fetch('/api/analyze', {
                   method: 'POST',
                   headers: {
@@ -111,9 +112,10 @@ export default function NavigationBar() {
                     files: [{
                       type: file.type,
                       name: file.name,
-                      data: base64Data
+                      data: base64Data,
+                      isImage: file.type.startsWith('image/')
                     }],
-                    prompt: "Please analyze this content and create a pixel-perfect HTML/CSS implementation"
+                    prompt: "Please analyze this content and create a pixel-perfect HTML/CSS implementation. Ensure all images are properly embedded using base64 encoding."
                   }),
                 });
 
@@ -123,12 +125,19 @@ export default function NavigationBar() {
 
                 const { response: analyzedContent } = await analyzeResponse.json();
 
+                // Generate preview with proper image handling
                 const previewResponse = await fetch('/api/preview', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({ response: analyzedContent }),
+                  body: JSON.stringify({ 
+                    response: analyzedContent,
+                    originalImage: {
+                      type: file.type,
+                      data: base64Data
+                    }
+                  }),
                 });
 
                 if (!previewResponse.ok) {

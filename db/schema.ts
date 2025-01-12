@@ -6,8 +6,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const projects = pgTable("projects", {
@@ -17,8 +17,8 @@ export const projects = pgTable("projects", {
   ownerId: integer("owner_id").references(() => users.id),
   language: text("language"),
   framework: text("framework"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Project schemas with proper validation
@@ -28,8 +28,6 @@ export const insertProjectSchema = createInsertSchema(projects, {
   language: z.string().optional(),
   framework: z.string().optional(),
   ownerId: z.number().optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
 });
 export const selectProjectSchema = createSelectSchema(projects);
 export type InsertProject = z.infer<typeof insertProjectSchema>;
@@ -42,15 +40,15 @@ export const artifacts = pgTable("artifacts", {
   content: text("content").notNull(),
   contentType: text("content_type").notNull(),
   projectId: integer("project_id").references(() => projects.id),
-  version: integer("version").default(1),
+  version: integer("version").default(1).notNull(),
   metadata: jsonb("metadata").$type<{
     language?: string;
     framework?: string;
     tags?: string[];
     lastEditDescription?: string;
   }>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const artifactVersions = pgTable("artifact_versions", {
@@ -64,7 +62,7 @@ export const artifactVersions = pgTable("artifact_versions", {
     changes?: string[];
     performance?: number;
   }>(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const files = pgTable("files", {
@@ -74,8 +72,8 @@ export const files = pgTable("files", {
   content: text("content"),
   type: text("type").notNull(),
   path: text("path").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const codeSnippets = pgTable("code_snippets", {
@@ -92,8 +90,8 @@ export const codeSnippets = pgTable("code_snippets", {
     complexity?: number;
     performance?: number;
   }>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertArtifactSchema = createInsertSchema(artifacts);

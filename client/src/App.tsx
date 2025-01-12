@@ -1,10 +1,11 @@
 import { Switch, Route } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import EditorPage from "./pages/EditorPage";
 import NavigationBar from "./components/NavigationBar";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { SelectProject } from "@db/schema";
+import { useToast } from "@/hooks/use-toast";
 
 // Placeholder components for new routes
 function PromptPage() {
@@ -81,52 +82,77 @@ function SettingsPage() {
 
 function App() {
   const [selectedProject, setSelectedProject] = useState<SelectProject | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleProjectSelect = (projectId: number | null) => {
+  const handleProjectSelect = useCallback(async (projectId: number | null) => {
     // If projectId is null, clear the selection
     if (!projectId) {
       setSelectedProject(null);
       return;
     }
 
-    // Fetch project details
-    fetch(`/api/projects/${projectId}`)
-      .then(res => res.json())
-      .then(project => {
-        setSelectedProject(project);
-        console.log('Switched to project:', project.name);
-      })
-      .catch(err => {
-        console.error('Failed to fetch project:', err);
-        setSelectedProject(null);
+    setIsLoading(true);
+    try {
+      // Fetch project details
+      const response = await fetch(`/api/projects/${projectId}`, {
+        credentials: 'include'
       });
-  };
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const project = await response.json();
+      setSelectedProject(project);
+      toast({
+        title: "Success",
+        description: `Switched to project: ${project.name}`,
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch project:', err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to switch project",
+        variant: "destructive",
+      });
+      setSelectedProject(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       <NavigationBar />
       <main className="flex-1 overflow-auto pl-16 p-4">
         <div className="container mx-auto max-w-7xl h-full">
-          <Switch>
-            <Route 
-              path="/" 
-              component={() => (
-                <EditorPage 
-                  selectedProject={selectedProject}
-                  onProjectSelect={handleProjectSelect}
-                />
-              )} 
-            />
-            <Route path="/prompt" component={PromptPage} />
-            <Route path="/preview" component={PreviewPage} />
-            <Route path="/backend" component={BackendPage} />
-            <Route path="/deploy" component={DeployPage} />
-            <Route path="/github" component={GitHubPage} />
-            <Route path="/help" component={HelpPage} />
-            <Route path="/collab" component={CollabPage} />
-            <Route path="/settings" component={SettingsPage} />
-            <Route component={NotFound} />
-          </Switch>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Switch>
+              <Route 
+                path="/" 
+                component={() => (
+                  <EditorPage 
+                    selectedProject={selectedProject}
+                    onProjectSelect={handleProjectSelect}
+                  />
+                )} 
+              />
+              <Route path="/prompt" component={PromptPage} />
+              <Route path="/preview" component={PreviewPage} />
+              <Route path="/backend" component={BackendPage} />
+              <Route path="/deploy" component={DeployPage} />
+              <Route path="/github" component={GitHubPage} />
+              <Route path="/help" component={HelpPage} />
+              <Route path="/collab" component={CollabPage} />
+              <Route path="/settings" component={SettingsPage} />
+              <Route component={NotFound} />
+            </Switch>
+          )}
         </div>
       </main>
     </div>

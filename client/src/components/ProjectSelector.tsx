@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,8 +31,15 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: projects, isLoading } = useQuery<SelectProject[]>({
+  const { data: projects, isLoading, error } = useQuery<SelectProject[]>({
     queryKey: ["/api/projects"],
+    onError: (err: Error) => {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
   });
 
   const createProjectMutation = useMutation<SelectProject, Error, InsertProject>({
@@ -69,6 +76,14 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
     },
   });
 
+  if (error) {
+    return (
+      <Button variant="destructive" className="w-[200px]">
+        Failed to load projects
+      </Button>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2">
       <DropdownMenu>
@@ -78,12 +93,19 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
             className="w-[200px] justify-between"
             disabled={isLoading}
           >
-            <span className="truncate">
-              {isLoading 
-                ? "Loading..." 
-                : selectedProject?.name || "Select Project"}
-            </span>
-            <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </span>
+            ) : (
+              <>
+                <span className="truncate">
+                  {selectedProject?.name || "Select Project"}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
+              </>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[200px]">
@@ -149,7 +171,14 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
                 type="submit"
                 disabled={createProjectMutation.isPending}
               >
-                {createProjectMutation.isPending ? "Creating..." : "Create Project"}
+                {createProjectMutation.isPending ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating...
+                  </span>
+                ) : (
+                  "Create Project"
+                )}
               </Button>
             </div>
           </form>
