@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useDropzone } from "react-dropzone";
 import {
   Send,
   Loader2,
@@ -11,18 +12,15 @@ import {
   FileText,
   Code2,
   Globe,
-  Sparkles,
-  Eye,
-  Play,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useDropzone } from 'react-dropzone';
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LivePreview from "@/components/LivePreview";
+import { cn } from "@/lib/utils";
 
 interface FilePreview {
   name: string;
@@ -38,19 +36,26 @@ export default function AIAssistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [files, setFiles] = useState<FilePreview[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [previewCode, setPreviewCode] = useState<string>("");
   const [isBuilding, setIsBuilding] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const onDrop = (acceptedFiles: File[]) => {
-    acceptedFiles.forEach(processFile);
-  };
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop: async (acceptedFiles: File[]) => {
+      try {
+        for (const file of acceptedFiles) {
+          await processFile(file);
+        }
+      } catch (error: any) {
+        console.error('Error processing files:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to process files",
+          variant: "destructive"
+        });
+      }
+    },
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
       'text/plain': ['.txt'],
@@ -58,10 +63,11 @@ export default function AIAssistant() {
       'text/html': ['.html'],
       'text/css': ['.css']
     },
+    maxSize: 5242880, // 5MB
     multiple: true
   });
 
-  const processFile = async (file: File) => {
+  const processFile = async (file: File): Promise<void> => {
     try {
       const reader = new FileReader();
       const isImage = file.type.startsWith('image/');
@@ -72,8 +78,8 @@ export default function AIAssistant() {
 
         let content: string | undefined;
         if (!isImage) {
-          const textReader = new FileReader();
-          content = await new Promise((resolve) => {
+          content = await new Promise<string>((resolve) => {
+            const textReader = new FileReader();
             textReader.onload = (e) => resolve(e.target?.result as string);
             textReader.readAsText(file);
           });
@@ -88,56 +94,37 @@ export default function AIAssistant() {
           isImage
         };
 
-        setFiles(prev => [...prev, newFile]);
-
-        setMessages(prev => [
-          ...prev, 
-          `Uploaded ${isImage ? 'image' : 'code'} file: ${file.name}`
+        setFiles(prevFiles => [...prevFiles, newFile]);
+        setMessages(prevMessages => [
+          ...prevMessages,
+          `Uploaded ${isImage ? 'image' : 'file'}: ${file.name}`
         ]);
 
         toast({
-          title: "File uploaded",
+          title: "Success",
           description: `Successfully uploaded ${file.name}`,
         });
 
-        // Automatically scroll to the bottom
-        setTimeout(scrollToBottom, 100);
+        scrollToBottom();
       };
 
       reader.onerror = () => {
-        toast({
-          title: "Error",
-          description: `Failed to upload ${file.name}`,
-          variant: "destructive"
-        });
+        throw new Error(`Failed to read file: ${file.name}`);
       };
 
       reader.readAsDataURL(file);
-    } catch (error) {
+    } catch (error: any) {
       console.error('File processing error:', error);
-      toast({
-        title: "Error",
-        description: `Failed to process ${file.name}`,
-        variant: "destructive"
-      });
+      throw new Error(`Failed to process ${file.name}: ${error.message}`);
     }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFiles = event.target.files;
-    if (!uploadedFiles) return;
-    Array.from(uploadedFiles).forEach(processFile);
-  };
-
-  const removeFile = (fileName: string) => {
-    setFiles(prev => prev.filter(file => file.name !== fileName));
-    setMessages(prev => [...prev, `Removed file: ${fileName}`]);
   };
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
-      const scrollArea = scrollAreaRef.current;
-      scrollArea.scrollTop = scrollArea.scrollHeight;
+      scrollAreaRef.current.scrollTo({
+        top: scrollAreaRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -157,24 +144,29 @@ export default function AIAssistant() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Generate a preview application based on: ${input}\nFiles: ${files.map(f => f.name).join(', ')}`,
+          prompt: input.trim() || "Generate a preview based on the uploaded files",
           files: files.map(f => ({
             type: f.type,
             name: f.name,
             data: f.data,
-            isImage: f.type.startsWith('image/')
+            isImage: f.isImage
           }))
         }),
       });
 
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
 
       const data = await response.json();
       setPreviewCode(data.response);
-      setMessages(prev => [...prev, `Preview generated: ${data.response}`]);
+      setMessages(prev => [...prev, `Preview generated successfully`]);
+      scrollToBottom();
 
-      // Automatically scroll to the bottom
-      setTimeout(scrollToBottom, 100);
+      toast({
+        title: "Success",
+        description: "Preview generated successfully",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -186,90 +178,10 @@ export default function AIAssistant() {
     }
   };
 
-  const analyzeFiles = async () => {
-    if (files.length === 0) return;
-
-    setIsAnalyzing(true);
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: "Please analyze these files and suggest implementation details",
-          files: files.map(f => ({
-            type: f.type,
-            data: f.data
-          }))
-        }),
-      });
-
-      if (!response.ok) throw new Error(await response.text());
-
-      const data = await response.json();
-      setMessages(prev => [...prev, `AI Analysis: ${data.response}`]);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to analyze files",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
+  const removeFile = (fileName: string) => {
+    setFiles(prevFiles => prevFiles.filter(file => file.name !== fileName));
+    setMessages(prevMessages => [...prevMessages, `Removed file: ${fileName}`]);
   };
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const message = input.trim();
-
-    if (!message && files.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please enter your request or upload files to analyze",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setInput("");
-    setMessages(prev => [...prev, `You: ${message}`]);
-
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: message,
-          files: files.map(f => ({
-            type: f.type,
-            data: f.data
-          }))
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const data = await response.json();
-      setMessages(prev => [...prev, `AI: ${data.response}`]);
-      setFiles([]);
-    } catch (error: any) {
-      console.error("Development request failed:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to process development request",
-        variant: "destructive"
-      });
-      setMessages(prev => [...prev, `Error: ${error.message || "Failed to process development request"}`]);
-    } finally {
-      setIsLoading(false);
-      scrollToBottom();
-    }
-  }
 
   return (
     <div className="h-full flex flex-col bg-background border-l">
@@ -290,89 +202,72 @@ export default function AIAssistant() {
 
         <TabsContent value="input" className="flex-1 flex flex-col p-0">
           <ScrollArea className="flex-1" ref={scrollAreaRef}>
-            <div className="p-4 space-y-3">
-              <div {...getRootProps()} className={`
-                border-2 border-dashed rounded-lg p-3 text-center
-                ${isDragActive ? 'border-primary bg-primary/10' : 'border-muted'}
-                hover:border-primary hover:bg-primary/5 transition-colors
-                cursor-pointer
-              `}>
+            <div className="p-4 space-y-4">
+              {/* File Upload Zone */}
+              <div {...getRootProps()} className={cn(
+                "border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer",
+                isDragActive && !isDragReject ? "border-primary bg-primary/10" : "border-muted",
+                isDragReject ? "border-destructive bg-destructive/10" : "",
+                "hover:border-primary hover:bg-primary/5"
+              )}>
                 <input {...getInputProps()} />
-                <Upload className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  Drag and drop files here, or click to select files
+                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  {isDragActive ? "Drop the files here..." : "Drag and drop files here, or click to select files"}
                 </p>
+                {isDragReject && (
+                  <p className="mt-2 text-sm text-destructive">
+                    Some files are not supported
+                  </p>
+                )}
               </div>
 
+              {/* File Preview Section */}
               {files.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={analyzeFiles}
-                      disabled={isAnalyzing}
-                    >
-                      {isAnalyzing ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-3 w-3 mr-1" />
-                      )}
-                      Analyze
-                    </Button>
                     <Button
                       variant="default"
                       size="sm"
                       onClick={handlePreview}
                       disabled={isBuilding}
+                      className={cn(
+                        files.length > 0 && !isBuilding ? "bg-green-500 hover:bg-green-600" : ""
+                      )}
                     >
                       {isBuilding ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : (
-                        <Play className="h-3 w-3 mr-1" />
+                        <Upload className="h-4 w-4 mr-2" />
                       )}
-                      Preview
+                      {isBuilding ? "Processing..." : "Generate Preview"}
                     </Button>
                   </div>
 
-                  {files.map((file) => (
-                    <Card key={file.name} className="overflow-hidden">
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between mb-2">
+                  {files.map((file, index) => (
+                    <Card key={`${file.name}-${index}`} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             {file.isImage ? (
                               <ImageIcon className="h-4 w-4" />
-                            ) : file.type.includes('javascript') || file.type.includes('typescript') ? (
-                              <Code2 className="h-4 w-4" />
-                            ) : file.type.includes('html') ? (
-                              <Globe className="h-4 w-4" />
                             ) : (
                               <FileText className="h-4 w-4" />
                             )}
                             <span className="font-medium text-sm">{file.name}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => window.open(file.url)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => removeFile(file.name)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => removeFile(file.name)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
 
                         {file.isImage ? (
-                          <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+                          <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
                             <img
                               src={file.url}
                               alt={file.name}
@@ -380,10 +275,8 @@ export default function AIAssistant() {
                             />
                           </div>
                         ) : (
-                          <pre className="bg-muted p-3 rounded-md overflow-x-auto max-h-[200px] text-sm">
-                            <code>
-                              {file.content || 'Unable to preview file content'}
-                            </code>
+                          <pre className="bg-muted p-3 rounded-lg overflow-x-auto max-h-[200px] text-sm">
+                            <code>{file.content || 'Unable to preview file content'}</code>
                           </pre>
                         )}
                       </CardContent>
@@ -392,26 +285,27 @@ export default function AIAssistant() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                {messages.map((msg, i) => (
+              {/* Messages History */}
+              <div className="space-y-3">
+                {messages.map((msg, index) => (
                   <div
-                    key={i}
-                    className={`p-2 rounded-lg text-xs ${
+                    key={index}
+                    className={cn(
+                      "p-3 rounded-lg text-sm",
                       msg.startsWith("You:") ? "bg-primary/10" :
-                        msg.startsWith("Error:") ? "bg-destructive/10" :
-                          msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "bg-secondary/20" :
-                            msg.startsWith("AI Analysis:") ? "bg-green-100 dark:bg-green-900/20" :
-                              msg.startsWith("Preview generated:") ? "bg-blue-100 dark:bg-blue-900/20" :
-                                "bg-secondary"
-                    }`}
+                      msg.startsWith("Error:") ? "bg-destructive/10" :
+                      msg.startsWith("Uploaded") ? "bg-secondary/20" :
+                      msg.startsWith("Preview generated") ? "bg-green-100 dark:bg-green-900/20" :
+                      "bg-secondary"
+                    )}
                   >
-                    <p className={`whitespace-pre-wrap ${
+                    <p className={cn(
+                      "whitespace-pre-wrap",
                       msg.startsWith("Error:") ? "text-destructive" :
-                        msg.startsWith("Uploaded") || msg.startsWith("Removed") ? "text-muted-foreground" :
-                          msg.startsWith("AI Analysis:") ? "text-green-800 dark:text-green-200" :
-                            msg.startsWith("Preview generated:") ? "text-blue-800 dark:text-blue-200" :
-                              ""
-                    }`}>
+                      msg.startsWith("Uploaded") ? "text-muted-foreground" :
+                      msg.startsWith("Preview generated") ? "text-green-800 dark:text-green-200" :
+                      ""
+                    )}>
                       {msg}
                     </p>
                   </div>
@@ -420,7 +314,8 @@ export default function AIAssistant() {
             </div>
           </ScrollArea>
 
-          <div className="border-t p-2">
+          {/* Input Area */}
+          <div className="border-t p-4">
             <div className="flex gap-2">
               <Textarea
                 value={input}
@@ -428,8 +323,8 @@ export default function AIAssistant() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    if (!isLoading && (input.trim() || files.length > 0)) {
-                      void handleSubmit(e);
+                    if (!isBuilding && (input.trim() || files.length > 0)) {
+                      handlePreview();
                     }
                   }
                 }}
@@ -437,13 +332,12 @@ export default function AIAssistant() {
                 className="min-h-[50px] max-h-[100px] resize-none text-sm"
               />
               <Button
-                type="submit"
-                onClick={handleSubmit}
-                size="sm"
-                className={`self-end ${isLoading ? 'bg-muted' : ''}`}
-                disabled={isLoading || (!input.trim() && files.length === 0)}
+                onClick={handlePreview}
+                size="icon"
+                className="h-[50px]"
+                disabled={isBuilding || (!input.trim() && files.length === 0)}
               >
-                {isLoading ? (
+                {isBuilding ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
@@ -456,7 +350,7 @@ export default function AIAssistant() {
           </div>
         </TabsContent>
 
-        <TabsContent value="preview" className="flex-1 p-4">
+        <TabsContent value="preview" className="flex-1 p-0 m-0">
           <LivePreview code={previewCode} isBuilding={isBuilding} />
         </TabsContent>
       </Tabs>

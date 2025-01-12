@@ -7,7 +7,6 @@ import { artifacts, projects, insertProjectSchema, files, artifactVersions } fro
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
-// Initialize OpenAI with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
@@ -223,80 +222,57 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // AI Analysis endpoint
+  // API Analysis endpoint (Improved from edited code)
   app.post("/api/analyze", async (req: Request, res: Response) => {
     try {
       const { prompt, files: uploadedFiles } = req.body;
-      console.log("Received analyze request:", { prompt, filesCount: uploadedFiles?.length });
 
       if (!process.env.OPENAI_API_KEY) {
         throw new Error("OpenAI API key not configured");
       }
 
-      const messages: any[] = [
-        {
-          role: "system" as const,
-          content: `You are an expert UI designer and developer. Analyze the uploaded content and provide HTML/CSS code to replicate the design. Focus on:
-2. Accurate visual representation
-3. Responsive layout
-4. Modern CSS practices
-5. Accessibility
-Output complete, self-contained HTML with embedded CSS that can be directly previewed.`
+      if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
+        throw new Error("No files provided or invalid file format");
+      }
+
+      // Process files for OpenAI vision API
+      const content: any[] = [{ 
+        type: "text", 
+        text: prompt || "Please analyze this content and create a pixel-perfect HTML/CSS implementation" 
+      }];
+
+      // Add files to content array
+      for (const file of uploadedFiles) {
+        if (!file.type || !file.data) {
+          throw new Error("Invalid file format. Type and data are required.");
         }
-      ];
 
-      // Add uploaded files to the message
-      if (uploadedFiles && uploadedFiles.length > 0) {
-        const fileContents = uploadedFiles.map((file: any) => ({
-          type: file.type.startsWith('image/') ? 'image_url' : 'text',
-          [file.type.startsWith('image/') ? 'image_url' : 'text']:
-            file.type.startsWith('image/') ?
-              { url: `data:${file.type};base64,${file.data}` } :
-              file.data
-        }));
-
-        messages.push({
-          role: "user" as const,
-          content: [
-            { type: "text", text: prompt || "Please analyze this content and create a pixel-perfect HTML/CSS implementation" },
-            ...fileContents
-          ]
-        });
-      } else {
-        // Check for files in assets directory
-        const assetsDir = path.join(process.cwd(), "attached_assets");
-        const latestImage = await getLatestFile(assetsDir);
-        console.log("Latest image found:", latestImage);
-
-        if (latestImage) {
-          const imageBuffer = await fs.readFile(latestImage);
-          messages.push({
-            role: "user" as const,
-            content: [
-              { type: "text", text: prompt || "Please analyze this image and create a pixel-perfect HTML/CSS implementation" },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/png;base64,${imageBuffer.toString('base64')}`
-                }
-              }
-            ]
+        // Handle image files
+        if (file.isImage) {
+          content.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${file.type};base64,${file.data}`
+            }
           });
         } else {
-          messages.push({
-            role: "user" as const,
-            content: prompt || "Please provide a default implementation"
+          // Handle text/code files
+          content.push({
+            type: "text",
+            text: file.data
           });
         }
       }
 
-      console.log("Sending request to OpenAI");
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      // Send request to OpenAI
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
+        model: "gpt-4-vision-preview",
+        messages: [{
+          role: "user",
+          content
+        }],
+        max_tokens: 4000,
         temperature: 0.7,
-        max_tokens: 4000
       });
 
       const response = completion.choices[0]?.message?.content;
@@ -304,61 +280,96 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
         throw new Error("Failed to get response from AI");
       }
 
-      console.log("Successfully got response from OpenAI");
-      res.json({ response });
+      // Extract HTML content from code blocks if present
+      let htmlContent = response;
+      const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
+      if (htmlMatch) {
+        htmlContent = htmlMatch[1];
+      }
+
+      // Create styled HTML response
+      const styledHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      color: #333;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 1rem auto;
+    }
+
+    p {
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    ${htmlContent}
+  </div>
+</body>
+</html>`;
+
+      res.json({ response: styledHtml });
 
     } catch (error: any) {
       console.error("AI Analysis failed:", error);
       res.status(500).json({
-        message: error.message || "Failed to get AI response",
+        message: error.message || "Failed to process request",
         error: error.toString()
       });
     }
   });
 
-  // Preview endpoint
+  // Preview endpoint (from edited code)
   app.post("/api/preview", async (req: Request, res: Response) => {
     try {
-      const { response: aiResponse, originalImage } = req.body;
+      const { response: aiResponse } = req.body;
 
-      // If no response provided, get one from the AI
       if (!aiResponse) {
-        const analyzeResponse = await fetch(`${req.protocol}://${req.get('host')}/api/analyze`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(req.body)
-        });
-
-        if (!analyzeResponse.ok) {
-          throw new Error('Failed to analyze content');
-        }
-
-        const { response: analyzedContent } = await analyzeResponse.json();
-        let htmlContent = analyzedContent;
-        const htmlMatch = analyzedContent.match(/```html\n([\s\S]*?)```/);
-        if (htmlMatch) {
-          htmlContent = htmlMatch[1];
-        }
-
-        // Apply styling and structure
-        htmlContent = wrapWithBookingStyle(htmlContent, originalImage);
-        res.setHeader('Content-Type', 'text/html');
-        return res.send(htmlContent);
+        throw new Error("No content provided for preview");
       }
 
-      // Handle direct response
-      let htmlContent = aiResponse;
-      const htmlMatch = aiResponse.match(/```html\n([\s\S]*?)```/);
-      if (htmlMatch) {
-        htmlContent = htmlMatch[1];
-      }
-
-      // Apply styling and structure
-      htmlContent = wrapWithBookingStyle(htmlContent, originalImage);
       res.setHeader('Content-Type', 'text/html');
-      res.send(htmlContent);
+      res.send(aiResponse);
 
     } catch (error: any) {
       console.error("Preview generation failed:", error);
@@ -493,15 +504,8 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   return httpServer;
 }
 
-// Helper function to wrap HTML content with Booking.com-inspired styling
-function wrapWithBookingStyle(content: string, originalImage: any | null): string {
-  // Add image embedding if there's an original image
-  let processedContent = content;
-  if (originalImage) {
-    const imageTag = `<div class="property-image-container"><img src="data:${originalImage.type};base64,${originalImage.data}" alt="Property" class="property-image"></div>`;
-    processedContent = processedContent.replace(/<img[^>]+>/g, imageTag);
-  }
-
+// Helper function to wrap HTML content with proper styling
+function wrapWithBookingStyle(content: string): string {
   return `
 <!DOCTYPE html>
 <html>
@@ -520,135 +524,54 @@ function wrapWithBookingStyle(content: string, originalImage: any | null): strin
       line-height: 1.5;
       color: #333;
       background-color: #f5f5f5;
+      padding: 20px;
     }
 
-    .header {
-      background: #003580;
-      color: white;
-      padding: 16px;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-    }
-
-    .search-bar {
-      background: #febb02;
-      padding: 16px;
-      margin: 64px 0 24px;
-    }
-
-    .search-bar form {
-      max-width: 1160px;
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
       margin: 0 auto;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
     }
 
-    .search-bar input,
-    .search-bar select {
-      padding: 12px;
-      border: none;
-      border-radius: 4px;
-      flex: 1;
-      min-width: 200px;
-      font-size: 14px;
-    }
-
-    .search-button {
-      background: #0071c2;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    .search-button:hover {
-      background: #005999;
-    }
-
-    .main-content {
-      max-width: 1160px;
-      margin: 0 auto;
-      padding: 0 16px;
-    }
-
-    .property-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 24px;
-      margin: 24px 0;
-    }
-
-    .property-card {
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      transition: transform 0.2s;
-    }
-
-    .property-card:hover {
-      transform: translateY(-4px);
-    }
-
-    .property-image-container {
-      position: relative;
-      padding-top: 75%; /* 4:3 aspect ratio */
-      overflow: hidden;
-    }
-
-    .property-image {
-      position: absolute;
-      top: 0;
-      left: 0;
+    .container {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
     }
 
-    .property-info {
-      padding: 16px;
+    .image-container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto 20px;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
-    .property-type {
-      font-size: 16px;
-      font-weight: 600;
-      color: #262626;
-      margin-bottom: 4px;
+    .preview-image {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
     }
 
-    .property-description {
-      font-size: 14px;
-      color: #6b6b6b;
-    }
-
-    @media (max-width: 1200px) {
-      .property-grid {
-        grid-template-columns: repeat(3, 1fr);
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
       }
-    }
 
-    @media (max-width: 900px) {
-      .property-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (max-width: 600px) {
-      .property-grid {
-        grid-template-columns: 1fr;
+      .container {
+        padding: 10px;
       }
     }
   </style>
 </head>
 <body>
-  ${processedContent}
+  <div class="container">
+    ${content}
+  </div>
 </body>
 </html>`;
 }
