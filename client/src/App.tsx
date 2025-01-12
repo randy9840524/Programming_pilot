@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 import EditorPage from "./pages/EditorPage";
 import NavigationBar from "./components/NavigationBar";
+import { useState } from "react";
+import type { SelectProject } from "@db/schema";
 
 // Placeholder components for new routes
 function PromptPage() {
@@ -78,13 +80,43 @@ function SettingsPage() {
 }
 
 function App() {
+  const [selectedProject, setSelectedProject] = useState<SelectProject | null>(null);
+
+  const handleProjectSelect = (projectId: number | null) => {
+    // If projectId is null, clear the selection
+    if (!projectId) {
+      setSelectedProject(null);
+      return;
+    }
+
+    // Fetch project details
+    fetch(`/api/projects/${projectId}`)
+      .then(res => res.json())
+      .then(project => {
+        setSelectedProject(project);
+        console.log('Switched to project:', project.name);
+      })
+      .catch(err => {
+        console.error('Failed to fetch project:', err);
+        setSelectedProject(null);
+      });
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       <NavigationBar />
-      <main className="flex-1 overflow-auto pl-16 p-4"> {/* Added padding and proper overflow handling */}
-        <div className="container mx-auto max-w-7xl h-full"> {/* Added container with max width */}
+      <main className="flex-1 overflow-auto pl-16 p-4">
+        <div className="container mx-auto max-w-7xl h-full">
           <Switch>
-            <Route path="/" component={EditorPage} />
+            <Route 
+              path="/" 
+              component={() => (
+                <EditorPage 
+                  selectedProject={selectedProject}
+                  onProjectSelect={handleProjectSelect}
+                />
+              )} 
+            />
             <Route path="/prompt" component={PromptPage} />
             <Route path="/preview" component={PreviewPage} />
             <Route path="/backend" component={BackendPage} />

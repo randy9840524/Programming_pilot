@@ -15,12 +15,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { InsertProject, SelectProject } from "@db/schema";
+import { cn } from "@/lib/utils";
 
 interface ProjectSelectorProps {
   onSelect: (projectId: number | null) => void;
+  selectedProject: SelectProject | null;
 }
 
-export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
+export default function ProjectSelector({ onSelect, selectedProject }: ProjectSelectorProps) {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [newProject, setNewProject] = useState<Partial<InsertProject>>({
     name: "",
@@ -39,6 +41,7 @@ export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(project),
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -70,9 +73,17 @@ export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
     <div className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[200px] justify-between">
-            {isLoading ? "Loading..." : projects?.[0]?.name || "Select Project"}
-            <ChevronDown className="h-4 w-4 opacity-50" />
+          <Button 
+            variant="outline" 
+            className="w-[200px] justify-between"
+            disabled={isLoading}
+          >
+            <span className="truncate">
+              {isLoading 
+                ? "Loading..." 
+                : selectedProject?.name || "Select Project"}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[200px]">
@@ -80,6 +91,10 @@ export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
             <DropdownMenuItem 
               key={project.id}
               onClick={() => onSelect(project.id)}
+              className={cn(
+                "cursor-pointer",
+                selectedProject?.id === project.id && "bg-accent text-accent-foreground"
+              )}
             >
               {project.name}
             </DropdownMenuItem>
@@ -130,7 +145,12 @@ export default function ProjectSelector({ onSelect }: ProjectSelectorProps) {
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit">Create Project</Button>
+              <Button 
+                type="submit"
+                disabled={createProjectMutation.isPending}
+              >
+                {createProjectMutation.isPending ? "Creating..." : "Create Project"}
+              </Button>
             </div>
           </form>
         </DialogContent>

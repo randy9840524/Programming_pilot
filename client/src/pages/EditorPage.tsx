@@ -10,29 +10,32 @@ import AIAssistant from "@/components/AIAssistant";
 import ProjectSelector from "@/components/ProjectSelector";
 import { useMobile } from "@/hooks/use-mobile";
 import ExportOptions from "@/components/ExportOptions";
+import type { SelectProject } from "@db/schema";
 
 type RightPanelView = 'ai' | 'artifacts';
 
-export default function EditorPage() {
+interface EditorPageProps {
+  selectedProject: SelectProject | null;
+  onProjectSelect: (projectId: number | null) => void;
+}
+
+export default function EditorPage({ selectedProject, onProjectSelect }: EditorPageProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [rightPanelView, setRightPanelView] = useState<RightPanelView>('ai');
   const isMobile = useMobile();
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
 
   useEffect(() => {
-    document.title = "CodeCraft IDE - Modern Development Environment";
+    document.title = selectedProject 
+      ? `${selectedProject.name} - CodeCraft IDE` 
+      : "CodeCraft IDE - Modern Development Environment";
 
     if (isMobile) {
       setShowSidebar(false);
       setShowRightPanel(false);
     }
-  }, [isMobile]);
-
-  const handleProjectSelect = (projectId: number | null) => {
-    setSelectedProjectId(projectId);
-  };
+  }, [isMobile, selectedProject]);
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
@@ -50,7 +53,10 @@ export default function EditorPage() {
 
         <div className="flex-1 flex items-center gap-4 overflow-x-auto">
           <span className="font-bold text-lg whitespace-nowrap">CodeCraft IDE</span>
-          <ProjectSelector onSelect={handleProjectSelect} />
+          <ProjectSelector 
+            onSelect={onProjectSelect} 
+            selectedProject={selectedProject}
+          />
           <CommandPalette />
         </div>
 

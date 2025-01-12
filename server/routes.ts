@@ -6,39 +6,79 @@ import path from 'path';
 import { artifacts, projects, insertProjectSchema, files, artifactVersions } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import fetch from "node-fetch";
 
 // Initialize OpenAI with API key
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
-async function getLatestFile(directory: string): Promise<string | null> {
-  try {
-    const files = await fs.readdir(directory);
-    let latestFile: string | null = null;
-    let latestTime = 0;
-
-    for (const file of files) {
-      if (file.endsWith('.png')) {
-        const filePath = path.join(directory, file);
-        const stats = await fs.stat(filePath);
-        if (stats.mtimeMs > latestTime) {
-          latestTime = stats.mtimeMs;
-          latestFile = filePath;
-        }
-      }
-    }
-
-    return latestFile;
-  } catch (error) {
-    console.error('Error reading directory:', error);
-    return null;
-  }
-}
-
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
+
+  // Get project by ID
+  app.get("/api/projects/:id", async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).send("Invalid project ID");
+      }
+
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, projectId))
+        .limit(1);
+
+      if (!project) {
+        return res.status(404).send("Project not found");
+      }
+
+      res.json(project);
+    } catch (error) {
+      console.error("Failed to fetch project:", error);
+      res.status(500).json({ message: "Failed to fetch project" });
+    }
+  });
+
+  // Get all projects
+  app.get("/api/projects", async (_req: Request, res: Response) => {
+    try {
+      const allProjects = await db.select().from(projects);
+      res.json(allProjects);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  // Create new project
+  app.post("/api/projects", async (req: Request, res: Response) => {
+    try {
+      const result = insertProjectSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
+      }
+
+      // Extract only the fields we want to insert
+      const { name, description, language, framework } = result.data;
+      const projectData = {
+        name,
+        description,
+        language,
+        framework,
+      };
+
+      const [project] = await db
+        .insert(projects)
+        .values(projectData)
+        .returning();
+
+      res.json(project);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
 
   // Get all artifacts for a project
   app.get("/api/artifacts", async (req: Request, res: Response) => {
@@ -167,32 +207,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get all projects
-  app.get("/api/projects", async (_req: Request, res: Response) => {
-    try {
-      const allProjects = await db.select().from(projects);
-      res.json(allProjects);
-    } catch (error) {
-      console.error("Failed to fetch projects:", error);
-      res.status(500).json({ message: "Failed to fetch projects" });
-    }
-  });
-
-  // Create new project
-  app.post("/api/projects", async (req: Request, res: Response) => {
-    try {
-      const result = insertProjectSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
-      }
-
-      const [project] = await db.insert(projects).values(result.data).returning();
-      res.json(project);
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      res.status(500).json({ message: "Failed to create project" });
-    }
-  });
 
   // Get project files
   app.get("/api/projects/:id/files", async (req: Request, res: Response) => {
@@ -546,4 +560,28 @@ async function cleanupTempDir(tempDir: string): Promise<void> {
 function getWebDeploymentUrl(): string {
   //Implementation for getting web deployment URL
   throw new Error("Function not implemented.");
+}
+
+async function getLatestFile(directory: string): Promise<string | null> {
+  try {
+    const files = await fs.readdir(directory);
+    let latestFile: string | null = null;
+    let latestTime = 0;
+
+    for (const file of files) {
+      if (file.endsWith('.png')) {
+        const filePath = path.join(directory, file);
+        const stats = await fs.stat(filePath);
+        if (stats.mtimeMs > latestTime) {
+          latestTime = stats.mtimeMs;
+          latestFile = filePath;
+        }
+      }
+    }
+
+    return latestFile;
+  } catch (error) {
+    console.error('Error reading directory:', error);
+    return null;
+  }
 }
