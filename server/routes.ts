@@ -237,10 +237,10 @@ export function registerRoutes(app: Express): Server {
         {
           role: "system" as const,
           content: `You are an expert UI designer and developer. Analyze the uploaded content and provide HTML/CSS code to replicate the design. Focus on:
-1. Accurate visual representation
-2. Responsive layout
-3. Modern CSS practices
-4. Accessibility
+2. Accurate visual representation
+3. Responsive layout
+4. Modern CSS practices
+5. Accessibility
 Output complete, self-contained HTML with embedded CSS that can be directly previewed.`
         }
       ];
@@ -319,10 +319,10 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   // Preview endpoint
   app.post("/api/preview", async (req: Request, res: Response) => {
     try {
-      const { response, originalImage } = req.body;
+      const { response: aiResponse, originalImage } = req.body;
 
       // If no response provided, get one from the AI
-      if (!response) {
+      if (!aiResponse) {
         const analyzeResponse = await fetch(`${req.protocol}://${req.get('host')}/api/analyze`, {
           method: 'POST',
           headers: {
@@ -336,281 +336,30 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
         }
 
         const { response: analyzedContent } = await analyzeResponse.json();
-
-        // Extract HTML content between ```html and ```
         let htmlContent = analyzedContent;
         const htmlMatch = analyzedContent.match(/```html\n([\s\S]*?)```/);
         if (htmlMatch) {
           htmlContent = htmlMatch[1];
         }
 
-        // Add default styling if not present
-        if (!htmlContent.includes('<style>')) {
-          htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .property-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin: 20px 0;
-    }
-
-    .property-item {
-      border: 1px solid #e7e7e7;
-      border-radius: 8px;
-      overflow: hidden;
-      transition: transform 0.2s;
-    }
-
-    .property-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .property-image {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .property-info {
-      padding: 12px;
-    }
-
-    .property-type {
-      font-size: 1.1em;
-      font-weight: 600;
-      color: #262626;
-      margin-bottom: 4px;
-    }
-
-    .search-bar {
-      background: #febb02;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-
-    .search-bar form {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .search-bar input,
-    .search-bar select {
-      padding: 10px;
-      border: 1px solid #e7e7e7;
-      border-radius: 4px;
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .search-bar button {
-      background: #0071c2;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .search-bar button:hover {
-      background: #005999;
-    }
-
-    .header {
-      background: #003580;
-      color: white;
-      padding: 20px;
-      margin: -20px -20px 20px -20px;
-    }
-
-    .header h1 {
-      margin-bottom: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .property-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      }
-    }
-  </style>
-</head>
-<body>
-  ${htmlContent}
-</body>
-</html>`;
-        }
-
-        // Add image embedding if there's an original image
-        if (originalImage) {
-          const imageTag = `<img src="data:${originalImage.type};base64,${originalImage.data}" 
-            alt="Property" class="property-image">`;
-          htmlContent = htmlContent.replace(/<img[^>]+>/g, imageTag);
-        }
-
+        // Apply styling and structure
+        htmlContent = wrapWithBookingStyle(htmlContent, originalImage);
         res.setHeader('Content-Type', 'text/html');
         return res.send(htmlContent);
       }
 
       // Handle direct response
-      let htmlContent = response;
-      const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
+      let htmlContent = aiResponse;
+      const htmlMatch = aiResponse.match(/```html\n([\s\S]*?)```/);
       if (htmlMatch) {
         htmlContent = htmlMatch[1];
       }
 
-      // Add image embedding if there's an original image
-      if (originalImage) {
-        const imageTag = `<img src="data:${originalImage.type};base64,${originalImage.data}" 
-          alt="Property" class="property-image">`;
-        htmlContent = htmlContent.replace(/<img[^>]+>/g, imageTag);
-      }
-
-      // Ensure proper HTML structure and styling
-      if (!htmlContent.includes('<style>')) {
-        htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .property-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin: 20px 0;
-    }
-
-    .property-item {
-      border: 1px solid #e7e7e7;
-      border-radius: 8px;
-      overflow: hidden;
-      transition: transform 0.2s;
-    }
-
-    .property-item:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .property-image {
-      width: 100%;
-      height: 200px;
-      object-fit: cover;
-      display: block;
-    }
-
-    .property-info {
-      padding: 12px;
-    }
-
-    .property-type {
-      font-size: 1.1em;
-      font-weight: 600;
-      color: #262626;
-      margin-bottom: 4px;
-    }
-
-    .search-bar {
-      background: #febb02;
-      padding: 20px;
-      border-radius: 8px;
-      margin: 20px 0;
-    }
-
-    .search-bar form {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .search-bar input,
-    .search-bar select {
-      padding: 10px;
-      border: 1px solid #e7e7e7;
-      border-radius: 4px;
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .search-bar button {
-      background: #0071c2;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .search-bar button:hover {
-      background: #005999;
-    }
-
-    .header {
-      background: #003580;
-      color: white;
-      padding: 20px;
-      margin: -20px -20px 20px -20px;
-    }
-
-    .header h1 {
-      margin-bottom: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .property-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      }
-    }
-  </style>
-</head>
-<body>
-  ${htmlContent}
-</body>
-</html>`;
-      }
-
+      // Apply styling and structure
+      htmlContent = wrapWithBookingStyle(htmlContent, originalImage);
       res.setHeader('Content-Type', 'text/html');
       res.send(htmlContent);
+
     } catch (error: any) {
       console.error("Preview generation failed:", error);
       res.status(500).json({ 
@@ -744,7 +493,190 @@ Output complete, self-contained HTML with embedded CSS that can be directly prev
   return httpServer;
 }
 
+// Helper function to wrap HTML content with Booking.com-inspired styling
+function wrapWithBookingStyle(content: string, originalImage: any | null): string {
+  // Add image embedding if there's an original image
+  let processedContent = content;
+  if (originalImage) {
+    const imageTag = `<div class="property-image-container"><img src="data:${originalImage.type};base64,${originalImage.data}" alt="Property" class="property-image"></div>`;
+    processedContent = processedContent.replace(/<img[^>]+>/g, imageTag);
+  }
 
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+
+    .header {
+      background: #003580;
+      color: white;
+      padding: 16px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+    }
+
+    .search-bar {
+      background: #febb02;
+      padding: 16px;
+      margin: 64px 0 24px;
+    }
+
+    .search-bar form {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input,
+    .search-bar select {
+      padding: 12px;
+      border: none;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 200px;
+      font-size: 14px;
+    }
+
+    .search-button {
+      background: #0071c2;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .search-button:hover {
+      background: #005999;
+    }
+
+    .main-content {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .property-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      margin: 24px 0;
+    }
+
+    .property-card {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+    }
+
+    .property-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .property-image-container {
+      position: relative;
+      padding-top: 75%; /* 4:3 aspect ratio */
+      overflow: hidden;
+    }
+
+    .property-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .property-info {
+      padding: 16px;
+    }
+
+    .property-type {
+      font-size: 16px;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 4px;
+    }
+
+    .property-description {
+      font-size: 14px;
+      color: #6b6b6b;
+    }
+
+    @media (max-width: 1200px) {
+      .property-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .property-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .property-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${processedContent}
+</body>
+</html>`;
+}
+
+// Helper function to get the latest file from a directory
+async function getLatestFile(directory: string): Promise<string | null> {
+  try {
+    const files = await fs.readdir(directory);
+    let latestFile: string | null = null;
+    let latestTime = 0;
+
+    for (const file of files) {
+      if (file.endsWith('.png')) {
+        const filePath = path.join(directory, file);
+        const stats = await fs.stat(filePath);
+        if (stats.mtimeMs > latestTime) {
+          latestTime = stats.mtimeMs;
+          latestFile = filePath;
+        }
+      }
+    }
+
+    return latestFile;
+  } catch (error) {
+    console.error('Error reading directory:', error);
+    return null;
+  }
+}
 
 // Placeholder functions -  These need to be implemented separately.
 function createPongGame(): string {
@@ -770,28 +702,4 @@ async function cleanupTempDir(tempDir: string): Promise<void> {
 function getWebDeploymentUrl(): string {
   //Implementation for getting web deployment URL
   throw new Error("Function not implemented.");
-}
-
-async function getLatestFile(directory: string): Promise<string | null> {
-  try {
-    const files = await fs.readdir(directory);
-    let latestFile: string | null = null;
-    let latestTime = 0;
-
-    for (const file of files) {
-      if (file.endsWith('.png')) {
-        const filePath = path.join(directory, file);
-        const stats = await fs.stat(filePath);
-        if (stats.mtimeMs > latestTime) {
-          latestTime = stats.mtimeMs;
-          latestFile = filePath;
-        }
-      }
-    }
-
-    return latestFile;
-  } catch (error) {
-    console.error('Error reading directory:', error);
-    return null;
-  }
 }

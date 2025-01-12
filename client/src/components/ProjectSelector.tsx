@@ -44,18 +44,23 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
 
   const createProjectMutation = useMutation<SelectProject, Error, InsertProject>({
     mutationFn: async (project) => {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(project),
-        credentials: 'include'
-      });
+      try {
+        const response = await fetch("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(project),
+          credentials: 'include'
+        });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        return response.json();
+      } catch (err: any) {
+        console.error('Project creation error:', err);
+        throw err;
       }
-
-      return response.json();
     },
     onSuccess: (newProject) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -64,7 +69,7 @@ export default function ProjectSelector({ onSelect, selectedProject }: ProjectSe
       onSelect(newProject.id);
       toast({
         title: "Success",
-        description: "Project created successfully",
+        description: `Project created successfully: ${newProject.name}`,
       });
     },
     onError: (error) => {
