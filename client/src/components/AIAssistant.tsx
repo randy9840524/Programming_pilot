@@ -232,7 +232,7 @@ export default function AIAssistant() {
                       onClick={handlePreview}
                       disabled={isBuilding}
                       className={cn(
-                        files.length > 0 && !isBuilding ? "bg-green-500 hover:bg-green-600" : ""
+                        files.length > 0 ? "bg-green-500 hover:bg-green-600" : ""
                       )}
                     >
                       {isBuilding ? (
@@ -251,6 +251,10 @@ export default function AIAssistant() {
                           <div className="flex items-center gap-2">
                             {file.isImage ? (
                               <ImageIcon className="h-4 w-4" />
+                            ) : file.type.includes('javascript') || file.type.includes('typescript') ? (
+                              <Code2 className="h-4 w-4" />
+                            ) : file.type.includes('html') ? (
+                              <Globe className="h-4 w-4" />
                             ) : (
                               <FileText className="h-4 w-4" />
                             )}
