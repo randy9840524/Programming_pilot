@@ -50,35 +50,98 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create new project
-  app.post("/api/projects", async (req: Request, res: Response) => {
+  // API Analysis endpoint (stable version)
+  app.post("/api/analyze", async (req: Request, res: Response) => {
     try {
-      const result = insertProjectSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
+      const { prompt, files: uploadedFiles } = req.body;
+
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error("OpenAI API key not configured");
       }
 
-      // Extract only the fields we want to insert
-      const { name, description, language, framework } = result.data;
-      const projectData = {
-        name,
-        description,
-        language,
-        framework,
-      };
+      if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
+        throw new Error("No files provided or invalid file format");
+      }
 
-      const [project] = await db
-        .insert(projects)
-        .values(projectData)
-        .returning();
+      const content: any[] = [{ 
+        type: "text", 
+        text: prompt || "Please analyze this content and create a pixel-perfect HTML/CSS implementation" 
+      }];
 
-      res.json(project);
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      res.status(500).json({ message: "Failed to create project" });
+      for (const file of uploadedFiles) {
+        if (!file.type || !file.data) {
+          throw new Error("Invalid file format. Type and data are required.");
+        }
+
+        if (file.isImage) {
+          content.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${file.type};base64,${file.data}`
+            }
+          });
+        } else {
+          content.push({
+            type: "text",
+            text: file.data
+          });
+        }
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4-vision-preview",
+        messages: [{
+          role: "user",
+          content
+        }],
+        max_tokens: 4000,
+        temperature: 0.7,
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error("Failed to get response from AI");
+      }
+
+      let htmlContent = response;
+      const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
+      if (htmlMatch) {
+        htmlContent = htmlMatch[1];
+      }
+
+      const styledHtml = wrapWithBookingStyle(htmlContent);
+
+      res.json({ response: styledHtml });
+
+    } catch (error: any) {
+      console.error("AI Analysis failed:", error);
+      res.status(500).json({
+        message: error.message || "Failed to get AI response",
+        error: error.toString()
+      });
     }
   });
 
+  // Preview endpoint
+  app.post("/api/preview", async (req: Request, res: Response) => {
+    try {
+      const { response: aiResponse } = req.body;
+
+      if (!aiResponse) {
+        throw new Error("No content provided for preview");
+      }
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(aiResponse);
+
+    } catch (error: any) {
+      console.error("Preview generation failed:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to generate preview",
+        error: error.toString()
+      });
+    }
+  });
   // Get all artifacts for a project
   app.get("/api/artifacts", async (req: Request, res: Response) => {
     try {
@@ -219,164 +282,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Failed to fetch project files:", error);
       res.status(500).json({ message: "Failed to fetch project files" });
-    }
-  });
-
-  // API Analysis endpoint (Improved from edited code)
-  app.post("/api/analyze", async (req: Request, res: Response) => {
-    try {
-      const { prompt, files: uploadedFiles } = req.body;
-
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error("OpenAI API key not configured");
-      }
-
-      if (!uploadedFiles || !Array.isArray(uploadedFiles)) {
-        throw new Error("No files provided or invalid file format");
-      }
-
-      // Process files for OpenAI vision API
-      const content: any[] = [{ 
-        type: "text", 
-        text: prompt || "Please analyze this content and create a pixel-perfect HTML/CSS implementation" 
-      }];
-
-      // Add files to content array
-      for (const file of uploadedFiles) {
-        if (!file.type || !file.data) {
-          throw new Error("Invalid file format. Type and data are required.");
-        }
-
-        // Handle image files
-        if (file.isImage) {
-          content.push({
-            type: "image_url",
-            image_url: {
-              url: `data:${file.type};base64,${file.data}`
-            }
-          });
-        } else {
-          // Handle text/code files
-          content.push({
-            type: "text",
-            text: file.data
-          });
-        }
-      }
-
-      // Send request to OpenAI
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4-vision-preview",
-        messages: [{
-          role: "user",
-          content
-        }],
-        max_tokens: 4000,
-        temperature: 0.7,
-      });
-
-      const response = completion.choices[0]?.message?.content;
-      if (!response) {
-        throw new Error("Failed to get response from AI");
-      }
-
-      // Extract HTML content from code blocks if present
-      let htmlContent = response;
-      const htmlMatch = response.match(/```html\n([\s\S]*?)```/);
-      if (htmlMatch) {
-        htmlContent = htmlMatch[1];
-      }
-
-      // Create styled HTML response
-      const styledHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      line-height: 1.5;
-      color: #333;
-      background-color: #f5f5f5;
-      padding: 20px;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    img {
-      max-width: 100%;
-      height: auto;
-      display: block;
-      margin: 1rem auto;
-    }
-
-    p {
-      margin-bottom: 1rem;
-    }
-
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-
-      .container {
-        padding: 15px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    ${htmlContent}
-  </div>
-</body>
-</html>`;
-
-      res.json({ response: styledHtml });
-
-    } catch (error: any) {
-      console.error("AI Analysis failed:", error);
-      res.status(500).json({
-        message: error.message || "Failed to process request",
-        error: error.toString()
-      });
-    }
-  });
-
-  // Preview endpoint (from edited code)
-  app.post("/api/preview", async (req: Request, res: Response) => {
-    try {
-      const { response: aiResponse } = req.body;
-
-      if (!aiResponse) {
-        throw new Error("No content provided for preview");
-      }
-
-      res.setHeader('Content-Type', 'text/html');
-      res.send(aiResponse);
-
-    } catch (error: any) {
-      console.error("Preview generation failed:", error);
-      res.status(500).json({ 
-        message: error.message || "Failed to generate preview",
-        error: error.toString()
-      });
     }
   });
 
