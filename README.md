@@ -3,7 +3,9 @@
 Welcome to the **CodeCraft IDE Project** repository! 🚀
 
 This project is designed for developers who want to create, edit, and analyze code efficiently in an intuitive and robust IDE environment. Below, you'll find details about the functionality and features demonstrated in the provided screenshot.
-C:\Users\trist\OneDrive\Documents\New folder\ProgrammingPilot\Screenshot 2025-01-17 140904.png
+
+![Screenshot 2025-01-17 140904](https://github.com/user-attachments/assets/46f86332-89b0-409d-b189-b6e80f49a8be)
+
 ## Table of Contents
 
 - [About CodeCraft IDE](#about-codecraft-ide)
